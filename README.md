@@ -70,3 +70,7 @@ Each agent has two files:
 
 - **`description.md`**: Defines the agent's role, responsibilities, workflow, and rules. This is the agent's "instruction manual".
 - **`memory.md`**: A running log of experiences, lessons learned, and recurring patterns. Updated after each project to improve future performance.
+
+## Benchmarks
+
+- [Local LLM Coding Benchmark](benchmarks/local-llm-coding-benchmark.md) — HumanEval+ / MBPP+ pass@1 for open-weight coding models that fit on a single NVIDIA H100 80GB, served with vLLM and scored with EvalPlus. Includes the reproduction script (`benchmarks/run_bench.sh`) and raw run logs.
