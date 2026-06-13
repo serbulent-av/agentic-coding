@@ -150,8 +150,8 @@ Copilot API; all plans/reviews are persisted as markdown handoff files in `agent
 
 | Implementer | Baseline (12) | B: plan-once | C: plan + review×3 |
 |-------------|:--:|:--:|:--:|
-| phi-4 | 1/12 | 1/12 | _updating_ |
-| gemma-4-31B | 7/12 | _updating_ | _updating_ |
+| phi-4 | 1/12 | 1/12 | 2/12 |
+| gemma-4-31B | 7/12 | 5/12 | 8/12 |
 
 > **Status: running.** phi-4 Strategy B = 1/12 (unchanged vs baseline — a 14 B model at 16 k
 > context still produces mostly empty patches even with a correct plan; planning changed *which*
