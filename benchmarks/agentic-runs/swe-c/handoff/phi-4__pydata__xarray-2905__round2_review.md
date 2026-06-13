@@ -1,0 +1,3 @@
+VERDICT: REVISE
+
+The candidate patch is emptyâno changes were made. The issue remains unresolved. Implement the fix in `as_compatible_data()` in `xarray/core/variable.py`: restrict the `.values` unwrapping to recognized array-like types (e.g., check `isinstance(data, (pd.Series, pd.DataFrame, pd.Index))` or types with a proper duck-array interface) rather than blindly doing `getattr(data, 'values', data)`. Otherwise arbitrary objects exposing a `.values` attribute get corrupted. Also add a regression test covering the `HasValues` case.
