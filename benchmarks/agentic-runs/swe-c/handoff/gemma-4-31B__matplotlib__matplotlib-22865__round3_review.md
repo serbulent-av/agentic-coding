@@ -1,0 +1,3 @@
+VERDICT: APPROVED
+
+This matches the official upstream fix (PR #22834). Using `_extend_lower()`/`_extend_upper()` to conditionally include the start (index 0) and end (len(X)) divider segments correctly draws the edges at the extension triangles, while preserving the original `[1:-1]` behavior when extensions are absent. Logic and edge cases (extend='min', 'max', 'both', 'neither') are handled correctly.
