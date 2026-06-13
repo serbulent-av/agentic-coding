@@ -153,10 +153,17 @@ Copilot API; all plans/reviews are persisted as markdown handoff files in `agent
 | phi-4 | 1/12 | 1/12 | 2/12 |
 | gemma-4-31B | 7/12 | 5/12 | 8/12 |
 
-> **Status: running.** phi-4 Strategy B = 1/12 (unchanged vs baseline — a 14 B model at 16 k
-> context still produces mostly empty patches even with a correct plan; planning changed *which*
-> instance it solved, not the count). gemma-4-31B (B) and both models (C) are in progress; this
-> table and the analysis below are updated on completion.
+> **Findings.** Opus *plan-once* (B) did not raise resolved counts: phi-4 stayed at 1/12 (the plan
+> changed *which* instance it solved, not how many) and gemma-4-31B actually fell from 7/12 to 5/12,
+> so injecting a plan hurt the stronger model. The Opus *review loop* (C, ≤3 rounds) helped both
+> modestly — phi-4 reached 2/12 and gemma-4-31B recovered to 8/12, one above its baseline and three
+> above plan-once (C adds django-11433 and keeps all seven baseline solves; phi-4's two solves are
+> a different pair than its single baseline win). The review loop's value was thus mostly *undoing*
+> the plan-once regression while adding a single net solve per model over baseline, not a large gain.
+> Review rounds used differed by model strength: gemma converged fast (avg 2.0 rounds — 4 of 12
+> patches approved after round 1, 8 of 12 finalized by round 2), whereas phi-4 almost always hit the
+> 3-round cap (avg 2.83 rounds; 10 of 12 ran all three rounds as Opus kept rejecting its mostly-empty
+> patches).
 
 ### 4.5 Comparison vs Claude Opus 4.6 / 4.7 / 4.8 (vendor-reported)
 
