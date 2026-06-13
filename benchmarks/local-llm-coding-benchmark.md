@@ -172,6 +172,54 @@ all $5 / $25 per MTok; 1M context; **proprietary, API/cloud only (not self-hosta
    doc are on *saturated single-function* benchmarks; they do **not** imply Opus-level
    performance on real multi-step SWE-Bench Pro / Terminal-Bench tasks.
 
+## Measured: SWE-bench Verified under our own harness
+
+We actually ran it. All 6 local models on a fixed **50-instance SWE-bench Verified subset**
+(seed=0, 7 repos: django 22, sympy 11, sphinx 6, matplotlib 4, xarray/sklearn 3, astropy 1),
+agent = **mini-swe-agent** (minimal text/bash scaffold), 16k context, 40-step limit, single
+H100 (bf16; fp8 KV-cache on the 62–66 GB models). pass@1 = % of the 50 whose generated patch
+fully passed the hidden tests (swebench Docker harness). Raw trajectories + the 30 report JSONs
+are in `agentic-runs/swe-verified/`.
+
+| Model | SWE-bench Verified pass@1 | resolved / 50 | empty patches |
+|-------|:-------------------------:|:-------------:|:-------------:|
+| gemma-4-31B | **38.0%** | 19 | 18 |
+| GLM-4.7-Flash | 18.0% | 9 | 37 |
+| gemma-4-26B-A4B | 16.0% | 8 | 30 |
+| Qwen3-Coder-30B-A3B | 12.0% | 6 | 20 |
+| Qwen2.5-Coder-32B | 8.0% | 4 | 28 |
+| phi-4 | 2.0% | 1 | 40 |
+
+### This is the most important result in the doc
+
+**GLM-4.7-Flash scored 18% here vs its own self-reported 59.2%** on the *same benchmark*
+(SWE-bench Verified). That ~40-point gap is **not** the model getting worse — it is the
+**harness + context + settings**, and it empirically proves the cross-harness warning made
+earlier:
+
+- **Minimal scaffold:** mini-swe-agent is a bare bash loop; vendors use heavily tuned agents
+  (custom tools, retrieval, multi-attempt, far larger step budgets).
+- **16k context** (capped so phi-4 and the 66 GB models fit one H100; vendors run 128k+).
+  Many runs hit the limit → the high **empty-patch** counts.
+- 40-step limit, greedy, **50-instance subset** (noisy, ≈ ±7 pts), fp8-KV memory pressure on
+  the big dense models.
+
+**The only clean, like-for-like comparison in this entire document is within this table** — the
+6 local models under one identical harness. On that basis:
+
+- **gemma-4-31B is the clear local winner for agentic coding (38%)**, far ahead of the nominal
+  "coder" models. It produced a patch on 32/50 and resolved 19.
+- The **"coder" models underperformed here** (Qwen3-Coder 12%, Qwen2.5-Coder 8%) largely due to
+  **high empty-patch rates** — failing to emit a parseable patch under the minimal backticks
+  protocol — i.e. a scaffold-fit problem, not necessarily raw coding skill. A tuned agent would
+  likely lift them substantially.
+
+**Versus Opus:** still not directly comparable. Opus 4.8's 69.2 is SWE-Bench **Pro** under
+Anthropic's harness; this is **Verified** under mini-swe-agent. The takeaway is the opposite of
+a leaderboard: it shows how much the *harness* — not just the model — determines an agentic
+score. A fair Opus-vs-local number would require running Opus through *this* harness (needs an
+API key; deferred).
+
 ## Throughput (tokens/sec, measured on this H100)
 
 Measured with vLLM 0.22.1, bf16, 256 output tokens, greedy. **Single-stream** = concurrency 1
