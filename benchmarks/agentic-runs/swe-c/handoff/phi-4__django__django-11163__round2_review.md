@@ -1,0 +1,3 @@
+VERDICT: APPROVED
+
+The change correctly replaces the falsy check with an explicit `is not None` comparison in `model_to_dict`, so `fields=[]` now returns `{}` while `fields=None` still returns all editable fields. The parallel fix in `BaseModelForm._post_clean` (many_to_many/private_fields loop) is consistent with the referenced PR and keeps behavior aligned. Both edits preserve the existing `exclude` semantics. This resolves the issue.
