@@ -1,0 +1,3 @@
+VERDICT: REVISE
+
+The candidate patch is emptyâno changes were made. The issue remains unresolved. Implement the planned fix in `as_compatible_data()` in `xarray/core/variable.py`: restrict the `.values` unwrapping so it only applies to recognized array-like types (e.g., check `isinstance(data, (pd.Series, pd.DataFrame, pd.Index))` or similar) rather than blindly doing `getattr(data, 'values', data)`. Ensure arbitrary objects with a `.values` attribute are left intact for object-dtype storage.
