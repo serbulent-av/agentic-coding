@@ -77,6 +77,8 @@ Selected because they **fit weights on one 80 GB H100**; larger models (§4.6) c
   drives a local model served by vLLM (16 k context, 40-step limit, greedy; fp8 KV-cache on the
   62–66 GB models). Patches are scored by the official SWE-bench Docker harness. Subset: a fixed
   **seed-0 random 50** of SWE-bench Verified (7 repos), processed in chunks of 10 to respect disk.
+  5 instances across 3 models had eval-time errors (malformed patches); these were re-run. 1
+  additional resolution was gained (Qwen3-Coder-30B-A3B: matplotlib-20859), 4 errors persisted.
 - **Orchestration (§4.4):** Opus 4.8 (max effort) produces artifacts that are handed to the
   local implementer **through markdown files** (auditable). *Strategy B (plan-once):* Opus writes
   a per-instance plan injected into the task. *Strategy C (plan + review loop):* after the local
@@ -131,7 +133,7 @@ End-to-end run, 50-instance subset, minimal scaffold. pass@1 = % whose patch pas
 | gemma-4-31B | **38.0 %** | 19 | 18 |
 | GLM-4.7-Flash | 18.0 % | 9 | 37 |
 | gemma-4-26B-A4B | 16.0 % | 8 | 30 |
-| Qwen3-Coder-30B-A3B | 12.0 % | 6 | 20 |
+| Qwen3-Coder-30B-A3B | 14.0 % | 7 | 20 |
 | Qwen2.5-Coder-32B | 8.0 % | 4 | 28 |
 | phi-4 | 2.0 % | 1 | 40 |
 
@@ -237,6 +239,9 @@ Gemma 4 is Apache-2.0**, a change from Gemma 1–3's custom terms. Claude Opus 4
 
 - **Harness sensitivity (largest):** §4.3 shows a ~40-pt swing for the *same* model/benchmark
   from scaffold/context alone. Our agentic numbers are comparable **only among our 6 models**.
+- **Eval-time errors:** 5 of 300 total instances produced malformed patches that failed to apply
+  (3 for Qwen3-Coder-30B-A3B, 1 for Qwen2.5-Coder-32B, 1 for phi-4). Re-runs resolved 1
+  additional instance; 4 errors persisted due to model-level patch quality issues.
 - **Leakage audit (gemma):** all 19 of gemma-4-31B's baseline wins edit **1 source file, 0 test
   files** (e.g. django-11163 = the canonical `if fields is not None` fix). The harness applies
   grading tests only at eval, so the agent cannot see/cheat them. The planner/reviewer see only
@@ -276,7 +281,12 @@ trajectories, 30+ SWE-bench report JSONs, and per-experiment summary TSVs.
    not self-hostable — choose it for peak capability via API, not for on-prem/air-gapped use.
 4. **Frontier gap:** real and large on agentic/reasoning tasks, but not cleanly quantifiable from
    public cross-harness numbers; even 1 T open models report high-50s on SWE-Bench Pro vs Opus 69.2.
-5. **Opus-as-orchestrator (§4.4):** _conclusion pending experiment completion._
+5. **Opus-as-orchestrator (§4.4):** Opus *plan-once* (B) did not help — gemma-4-31B fell from
+   7/12 to 5/12, and phi-4 stayed at 1/12. Opus *review loop* (C, ≤3 rounds) helped modestly:
+   phi-4 reached 2/12 (+1) and gemma-4-31B reached 8/12 (+1 baseline). The review loop's value was
+   mostly *undoing* the plan-once regression, not a large net gain. Stronger models converge faster
+   (gemma avg 2.0 rounds vs phi-4 avg 2.83 rounds). **Conclusion: Opus orchestration adds marginal
+   value under a minimal scaffold; invest in the agent harness first, orchestrator second.**
 
 ## References
 
