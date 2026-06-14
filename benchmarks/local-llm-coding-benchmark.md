@@ -56,7 +56,7 @@ We answer:
 
 ### 2.2 Models under test
 
-Selected because they **fit weights on one 80 GB H100**; larger models (§4.6) cannot.
+Selected because they **fit weights on one 80 GB H100**; larger models (§4.5) cannot.
 
 | Model | Params (active) | Type | bf16 footprint |
 |-------|-----------------|------|----------------|
@@ -79,7 +79,7 @@ Selected because they **fit weights on one 80 GB H100**; larger models (§4.6) c
   **seed-0 random 50** of SWE-bench Verified (7 repos), processed in chunks of 10 to respect disk.
   5 instances across 3 models had eval-time errors (malformed patches); these were re-run. 1
   additional resolution was gained (Qwen3-Coder-30B-A3B: matplotlib-20859), 4 errors persisted.
-- **Orchestration (§4.4):** Opus 4.8 (max effort) produces artifacts that are handed to the
+- **Orchestration (§4.3):** Opus 4.8 (max effort) produces artifacts that are handed to the
   local implementer **through markdown files** (auditable). *Strategy B (plan-once):* Opus writes
   a per-instance plan injected into the task. *Strategy C (plan + review loop):* after the local
   model implements, Opus reviews the patch and returns md feedback; the local model revises, up
@@ -124,9 +124,13 @@ MoE models lead single-stream (few active params). The dense 33 B models run ~4�
 is multimodal and appears to lack fully-optimized vLLM 0.22.1 kernels here. **Opus tok/s: not
 published by Anthropic → no numeric comparison possible** (only the qualitative "fast mode ≈ 2.5×").
 
-### 4.3 Agentic baseline (SWE-bench Verified, our harness)
+### 4.3 Agentic results & strategy comparison (SWE-bench Verified)
 
-End-to-end run, 50-instance subset, minimal scaffold. pass@1 = % whose patch passed the hidden tests.
+End-to-end run, 50-instance subset, minimal scaffold. pass@1 = % whose patch passed the hidden
+tests. For phi-4 and gemma-4-31B we also ran Strategy B (Opus plan-once) and Strategy C (Opus
+plan + ≤3 review rounds) on a fixed 12-instance pilot subset, allowing direct comparison.
+
+**All models — baseline (50 instances):**
 
 | Model | pass@1 | resolved/50 | empty patches |
 |-------|:--:|:--:|:--:|
@@ -137,37 +141,32 @@ End-to-end run, 50-instance subset, minimal scaffold. pass@1 = % whose patch pas
 | Qwen2.5-Coder-32B | 8.0 % | 4 | 28 |
 | phi-4 | 2.0 % | 1 | 40 |
 
-**Key result — harness dominates.** GLM-4.7-Flash scores **18 % here vs 59.2 % self-reported** on
-the *same* benchmark. The ~40-pt gap is scaffold + 16 k context + 40 steps, not the model. The
-only clean comparison is *within* this table (identical harness): **gemma-4-31B wins agentic
-coding (38 %)**, far ahead of the nominal "coder" models, which suffered high empty-patch rates
-(scaffold-fit, not necessarily skill). See §6 for the leakage audit of these wins.
+**Strategy comparison — 12-instance pilot (phi-4 & gemma-4-31B):**
 
-### 4.4 Opus-orchestrated planning (Strategy B & C)
+| Implementer | Baseline (50) | Baseline (12) | B: plan-once (12) | C: plan + review×3 (12) | Δ C vs baseline |
+|-------------|:--:|:--:|:--:|:--:|:--:|
+| phi-4 | 2.0 % (1/50) | 8.3 % (1/12) | 8.3 % (1/12) | **16.7 %** (2/12) | +1 |
+| gemma-4-31B | **38.0 %** (19/50) | 58.3 % (7/12) | 41.7 % (5/12) | **66.7 %** (8/12) | +1 |
 
-Pilot on a fixed **12-instance** subset of the 50 (7 repos), comparing **Baseline** (§4.3, same
-instances) vs **B** (Opus plan-once) vs **C** (Opus plan + ≤3 review rounds). Implementers: phi-4
-(weak; 80 % empty baseline) and gemma-4-31B (strong). Opus 4.8 is the planner/reviewer via the
-Copilot API; all plans/reviews are persisted as markdown handoff files in `agentic-runs/swe-c/`.
+> **Key result — harness dominates.** GLM-4.7-Flash scores **18 % here vs 59.2 % self-reported** on
+> the *same* benchmark. The ~40-pt gap is scaffold + 16 k context + 40 steps, not the model. The
+> only clean comparison is *within* this table (identical harness): **gemma-4-31B wins agentic
+> coding (38 %)**, far ahead of the nominal "coder" models, which suffered high empty-patch rates
+> (scaffold-fit, not necessarily skill). See §6 for the leakage audit of these wins.
 
-| Implementer | Baseline (12) | B: plan-once | C: plan + review×3 |
-|-------------|:--:|:--:|:--:|
-| phi-4 | 1/12 | 1/12 | 2/12 |
-| gemma-4-31B | 7/12 | 5/12 | 8/12 |
+> **Opus orchestration.** Opus *plan-once* (B) did not raise resolved counts: phi-4 stayed
+> at 1/12 (the plan changed *which* instance it solved, not how many) and gemma-4-31B actually fell
+> from 7/12 to 5/12, so injecting a plan hurt the stronger model. The Opus *review loop* (C, ≤3
+> rounds) helped both modestly — phi-4 reached 2/12 and gemma-4-31B recovered to 8/12, one above
+> its baseline and three above plan-once (C adds django-11433 and keeps all seven baseline solves;
+> phi-4's two solves are a different pair than its single baseline win). The review loop's value was
+> thus mostly *undoing* the plan-once regression while adding a single net solve per model over
+> baseline, not a large gain. Review rounds used differed by model strength: gemma converged fast
+> (avg 2.0 rounds — 4 of 12 patches approved after round 1, 8 of 12 finalized by round 2), whereas
+> phi-4 almost always hit the 3-round cap (avg 2.83 rounds; 10 of 12 ran all three rounds as Opus
+> kept rejecting its mostly-empty patches).
 
-> **Findings.** Opus *plan-once* (B) did not raise resolved counts: phi-4 stayed at 1/12 (the plan
-> changed *which* instance it solved, not how many) and gemma-4-31B actually fell from 7/12 to 5/12,
-> so injecting a plan hurt the stronger model. The Opus *review loop* (C, ≤3 rounds) helped both
-> modestly — phi-4 reached 2/12 and gemma-4-31B recovered to 8/12, one above its baseline and three
-> above plan-once (C adds django-11433 and keeps all seven baseline solves; phi-4's two solves are
-> a different pair than its single baseline win). The review loop's value was thus mostly *undoing*
-> the plan-once regression while adding a single net solve per model over baseline, not a large gain.
-> Review rounds used differed by model strength: gemma converged fast (avg 2.0 rounds — 4 of 12
-> patches approved after round 1, 8 of 12 finalized by round 2), whereas phi-4 almost always hit the
-> 3-round cap (avg 2.83 rounds; 10 of 12 ran all three rounds as Opus kept rejecting its mostly-empty
-> patches).
-
-### 4.5 Comparison vs Claude Opus 4.6 / 4.7 / 4.8 (vendor-reported)
+### 4.4 Comparison vs Claude Opus 4.6 / 4.7 / 4.8 (vendor-reported)
 
 We could not run Opus through our harness within scope, so this is a **cross-harness, vendor-
 reported** comparison. Two caveats: (1) Anthropic reports SWE-Bench **Pro** while open models
@@ -200,7 +199,7 @@ API/cloud-only (not self-hostable)**.
 The only axis with numbers for both is **HLE** (reasoning, tool-settings differ), where Opus
 leads decisively (49.8 vs ≤19.5). On SWE-bench, Pro≠Verified prevents a clean comparison.
 
-### 4.6 Beyond a single GPU (oversized models)
+### 4.5 Beyond a single GPU (oversized models)
 
 Requested but **cannot run on one H100** (weights exceed 80 GB even at FP8). Their vendor-
 published agentic scores (each from the model's HF card), shown with Opus for reference:
@@ -250,7 +249,7 @@ Gemma 4 is Apache-2.0**, a change from Gemma 1–3's custom terms. Claude Opus 4
 - **Subset noise:** 50 (and 12-instance pilot) subsets are noisy (≈ ±7 pts); fixed seed-0 for
   reproducibility.
 - **Quantization:** fp8 KV-cache on the 62–66 GB models (memory); weights bf16.
-- **Cross-harness vendor numbers (§4.5/4.6):** different harnesses/effort — directional only.
+- **Cross-harness vendor numbers (§4.4/4.5):** different harnesses/effort — directional only.
 
 ## 7. Reproducibility
 
@@ -260,9 +259,9 @@ uv venv && uv pip install vllm evalplus mini-swe-agent swebench
 bash run_bench.sh            # §4.1 function-level (HumanEval+/MBPP+)
 bash run_throughput.sh       # §4.2 throughput
 bash run_swe_verified.sh     # §4.3 agentic baseline (50-instance subset)
-python build_planned.py      # §4.4 Strategy B planned dataset (Opus plans)
-bash run_pilot_planned.sh    # §4.4 Strategy B pilot
-python run_strategy_c.py     # §4.4 Strategy C (Opus review loop; opus_client.py)
+python build_planned.py      # §4.3 Strategy B planned dataset (Opus plans)
+bash run_pilot_planned.sh    # §4.3 Strategy B pilot
+python run_strategy_c.py     # §4.3 Strategy C (Opus review loop; opus_client.py)
 ```
 
 Artifacts (this directory): `run_*.sh`, `*.py`, fixed subset (`subset_50_instance_ids.txt`,
@@ -281,7 +280,7 @@ trajectories, 30+ SWE-bench report JSONs, and per-experiment summary TSVs.
    not self-hostable — choose it for peak capability via API, not for on-prem/air-gapped use.
 4. **Frontier gap:** real and large on agentic/reasoning tasks, but not cleanly quantifiable from
    public cross-harness numbers; even 1 T open models report high-50s on SWE-Bench Pro vs Opus 69.2.
-5. **Opus-as-orchestrator (§4.4):** Opus *plan-once* (B) did not help — gemma-4-31B fell from
+5. **Opus-as-orchestrator (§4.3):** Opus *plan-once* (B) did not help — gemma-4-31B fell from
    7/12 to 5/12, and phi-4 stayed at 1/12. Opus *review loop* (C, ≤3 rounds) helped modestly:
    phi-4 reached 2/12 (+1) and gemma-4-31B reached 8/12 (+1 baseline). The review loop's value was
    mostly *undoing* the plan-once regression, not a large net gain. Stronger models converge faster
