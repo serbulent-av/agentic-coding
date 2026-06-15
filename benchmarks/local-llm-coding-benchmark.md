@@ -161,7 +161,26 @@ tests.
 | Qwen2.5-Coder-32B | 8.0% | 4 | 28 |
 | phi-4 | 2.0% | 1 | 40 |
 
-#### 4.3.2 Orchestration strategies (12-instance pilot, phi-4 and gemma-4-31B)
+#### 4.3.2 Strategy B: Opus plan-once (all models, 50 instances)
+
+Opus 4.8 writes a per-instance plan injected into the task prompt. All 4 models run on the same
+50-instance subset with identical scaffold.
+
+| Model | Baseline | Strategy B | Delta | Empty patches | Errors |
+|-------|:--:|:--:|:--:|:--:|:--:|
+| gemma-4-31B | **38.0%** (19/50) | 24.0% (12/50) | **-14** | 9 | 0 |
+| Qwen3-Coder-30B-A3B | 14.0% (7/50) | 16.0% (8/50) | +1 | 5 | 5 |
+| Qwen2.5-Coder-32B | 8.0% (4/50) | 12.0% (6/50) | +2 | 26 | 2 |
+| GLM-4.7-Flash | 18.0% (9/50) | 6.0% (3/50) | **-12** | 22 | 0 |
+
+**Plans hurt the stronger models.** gemma-4-31B fell from 38% to 24% (-14 pts) and GLM-4.7-Flash
+from 18% to 6% (-12 pts). The plans appear to constrain models that would solve problems more
+flexibly without rigid step-by-step instructions. The weaker models (Qwen3, Qwen2.5) gained
+marginally (+1-2 pts) but remained below the stronger models' baselines. High empty-patch rates
+for GLM (22/50) and Qwen2.5 (26/50) suggest scaffold-fit issues — the plan-driven approach
+causes these models to produce malformed or empty patches at scale.
+
+#### 4.3.3 Strategy C: Opus plan + review (12-instance pilot, phi-4 and gemma-4-31B)
 
 For phi-4 and gemma-4-31B, Strategy B (Opus plan-once) and Strategy C (Opus plan + up to 3
 review rounds) were run on a fixed 12-instance pilot subset, enabling direct comparison.
@@ -171,7 +190,7 @@ review rounds) were run on a fixed 12-instance pilot subset, enabling direct com
 | phi-4 | 2.0% (1/50) | 8.3% (1/12) | 8.3% (1/12) | **16.7%** (2/12) | +1 |
 | gemma-4-31B | **38.0%** (19/50) | 58.3% (7/12) | 41.7% (5/12) | **66.7%** (8/12) | +1 |
 
-#### 4.3.3 Orchestration findings
+#### 4.3.4 Orchestration findings
 
 **Opus plan-once (B) did not help.** phi-4 stayed at 1/12 (the plan changed *which* instance it
 solved, not how many). gemma-4-31B fell from 7/12 to 5/12 — injecting a plan hurt the stronger
@@ -367,13 +386,14 @@ trajectories, 30+ SWE-bench report JSONs, and per-experiment summary TSVs.
 4. **Frontier gap:** Real and large on agentic/reasoning tasks, but not cleanly quantifiable from
    public cross-harness numbers; even 1 T open models report high-50s on SWE-Bench Pro vs Opus
    69.2.
-5. **Opus-as-orchestrator (sec 4.3):** Opus plan-once (B) did not help — gemma-4-31B fell from
-   7/12 to 5/12, and phi-4 stayed at 1/12. Opus review loop (C, up to 3 rounds) helped
-   modestly: phi-4 reached 2/12 (+1) and gemma-4-31B reached 8/12 (+1 baseline). The review
-   loop's value was mostly *undoing* the plan-once regression, not a large net gain. Stronger
-   models converge faster (gemma avg 2.0 rounds vs phi-4 avg 2.83 rounds). **Conclusion: Opus
-   orchestration adds marginal value under a minimal scaffold; invest in the agent harness
-   first, orchestrator second.**
+5. **Opus-as-orchestrator (sec 4.3):** Opus plan-once (B) hurts strong models — gemma-4-31B fell
+   from 38% to 24%, GLM-4.7-Flash from 18% to 6% — while marginally helping weaker ones (+1-2).
+   Opus review loop (C, up to 3 rounds) helped modestly on the 12-instance pilot: phi-4 reached
+   2/12 (+1) and gemma-4-31B reached 8/12 (+1 baseline). The review loop's value was mostly
+   *undoing* the plan-once regression, not a large net gain. Stronger models converge faster
+   (gemma avg 2.0 rounds vs phi-4 avg 2.83 rounds). **Conclusion: Opus orchestration adds
+   marginal or negative value under a minimal scaffold; invest in the agent harness first,
+   orchestrator second.**
 
 ## References
 
