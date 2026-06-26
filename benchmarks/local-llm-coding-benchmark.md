@@ -27,6 +27,10 @@ Headline findings:
   59.2% self-reported on the same benchmark.
 - **Orchestration:** Opus plan-once does not help; Opus review loop adds +1 net solve per
   model — marginal value under a minimal scaffold.
+- **Frontier-scale addendum (§4.7):** GLM-5.2 (753 B) on 8x H200 scores a raw **60%** on a
+  Terminal-Bench 2 subset under 8-way concurrency, but **68.2% harness-adjusted** (3 tasks are
+  un-gradeable even by the reference solution) and **90.9% pass@5** — the §4.6 harness-dominates
+  thesis reproduced at 753 B scale against the card's self-reported 82.7.
 - **Licensing:** All six models are MIT/Apache-2.0 (self-hostable, commercial-friendly). Opus
   is proprietary, API/cloud-only.
 
@@ -260,7 +264,9 @@ published agentic scores (each from the model's HF card), shown with Opus for re
 (1) GLM-4.5-Air's card reports only an aggregate 59.8/12-benchmarks. Even 750 B-1 T open
 flagships self-report **high-50s on SWE-Bench Pro** (vs Opus 4.8's self-reported 69.2); on the
 easier Verified they cluster ~79-81 (~third-party-measured Opus-4.6 ~80.8). GLM-5.1 (58.4) and
-Kimi-K2.6 (58.6) SWE-Bench Pro are cross-validated in DeepSeek's independent table.
+Kimi-K2.6 (58.6) SWE-Bench Pro are cross-validated in DeepSeek's independent table. GLM-5.2 (the
+753 B successor, card TB-2.1 `claude-code` = 82.7) is the one oversized model we **measured**
+rather than cited — see §4.7.
 
 **Note on "4-bit" in the Min HW column.** This refers to FP4 quantization (NVFP4/MXFP4),
 production-ready via NVIDIA ModelOpt on H100+ (SM 9.0), providing ~75% VRAM savings vs FP16.
@@ -320,6 +326,116 @@ self-reported scores reflects: (a) vendor harnesses use model-specific prompts a
 tools; (b) vendor harnesses may use larger context windows and more steps; (c) SWE-bench
 verifier noise adds ±8 pts. The mini-swe-agent harness is the community standard for model-fair
 comparison precisely because it isolates the model variable.
+
+### 4.7 Measured frontier-scale result: GLM-5.2 (753 B) on 8x H200 — Terminal-Bench 2
+
+§4.5 lists oversized models with only **vendor-reported** agentic scores. This section adds the
+report's first **measured** frontier-scale number, and it doubles as a live case study of the
+§4.6 harness-sensitivity thesis. GLM-5.2 (753 B MoE, FP8) was served on **8x H200** and evaluated
+on **Terminal-Bench 2** through the official **Harbor** harness with the built-in **`claude-code`**
+agent — the exact configuration GLM-5.2's own model card uses to claim Terminal-Bench 2.1 = 82.7.
+This is outside the single-H100 scope of this report (the weights are 704 GB); it parallels §4.5.
+
+#### 4.7.1 Setup (multi-GPU — differs from §2)
+
+| Component | Spec |
+|-----------|------|
+| GPU | 8x NVIDIA H200 141 GB (GCP `a3-ultragpu-8g`, Spot) |
+| Model | `zai-org/GLM-5.2-FP8` (753 B MoE, native FP8, 704 GB weights) |
+| Serving | SGLang (`lmsysorg/sglang:latest`, TP=8), 256 K context, temp 1.0 / top_p 0.95 (card defaults) |
+| Bridge | LiteLLM Anthropic `/v1/messages` -> SGLang OpenAI `/v1` (`hosted_vllm/` provider, tool-parser `glm47`) |
+| Harness | Harbor 0.15.0, dataset `terminal-bench/terminal-bench-2` (89 tasks), agent `claude-code` |
+| Output cap | `CLAUDE_CODE_MAX_OUTPUT_TOKENS=32768` (see note) |
+| Subset | fixed **25-task** subset (`-l 25`), pinned by name for re-runs |
+
+**Output-cap note (a harness gotcha worth recording).** The card recipe sets
+`max_new_tokens=131072` behind a transparent proxy. On a 256 K-context server that is unsafe: the
+Claude CLI reserves ~128 K for completion on *every* request, so once the running conversation
+exceeds ~134 K input tokens, `input + 128000 > 262144` and the server returns a 400 — the
+`claude` agent then aborts the whole task (reward 0) before its own auto-compaction (~184 K) can
+fire. Capping output at 32 768 moves the overflow point (~229 K input) above the compaction
+trigger, so the agent compacts instead of crashing. A 32 K per-turn output cap essentially never
+binds on real terminal-coding turns, so capability impact is ~nil. Without it, long tasks crash
+to 0 regardless of model ability — a pure harness artifact.
+
+#### 4.7.2 Layered result
+
+| Measurement | Config | Score | What it isolates |
+|-------------|--------|:--:|------------------|
+| Raw single-run | `-k 1 -n 8` (8-way concurrent) | **60.0%** (15/25) | as-run, under server contention |
+| Harness-adjusted | drop 3 oracle-ungradeable tasks | **68.2%** (15/22) | fair denominator |
+| pass@5 | `-k 5 -n 4 --timeout-multiplier 2`, 7 failures | **90.9%** (20/22) | recoverable under fair conditions |
+| *Vendor card (ref)* | TB-2.1, `claude-code`, 5-run avg | *82.7* | self-reported, all 89 tasks |
+
+**Oracle harness-validity baseline.** Running Harbor's `oracle` agent (reference solutions through
+the same verifiers) on the identical 25 tasks shows **3 tasks are un-gradeable even by the
+reference solution** — `install-windows-3-11`, `protein-assembly`, `rstan-to-pystan` (reward 0,
+broken environment). Charging these against the model is unfair, so the valid denominator is 22
+and the as-run 60% (15/25) becomes **68.2% (15/22)**. (Two other slow tasks, `caffe-cifar-10` and
+`crack-7z-hash`, only *looked* broken until their slow verifiers finished and flipped to
+oracle-pass — a reminder to let oracle verifiers complete before declaring a task broken.)
+
+**pass@5 recovery.** Of the 7 genuine GLM failures (all oracle-solvable), a low-contention re-run
+(`-n 4`, 2x verifier timeout, k=5) recovers **5 of 7**:
+
+| Failed task | attempts | passes | outcome |
+|-------------|:--:|:--:|---------|
+| overfull-hbox | 5 | 3 | recovered |
+| build-pov-ray | 5 | 2 | recovered |
+| polyglot-rust-c | 5 | 2 | recovered |
+| dna-insert | 5 | 1 | recovered |
+| make-mips-interpreter | 5 | 1 | recovered |
+| video-processing | 5 | 0 | genuine capability miss |
+| caffe-cifar-10 | 2 (+3 errored) | 0 | slow/flaky verifier; un-recovered |
+
+`overfull-hbox` passed on its **first** fair attempt — its k=1 "failure" was a concurrency
+timeout, not a capability miss. pass@5 over the 22 gradeable = (15 first-pass + 5 recovered)/22 =
+**90.9%**.
+
+> **Caveat — pass@5 is not the card's pass@1.** pass@5 >= pass@1 by construction, so 90.9% is
+> **not** directly comparable to the card's mean-pass@1 82.7. The honest read: GLM-5.2's *as-run
+> single-shot* score on this subset is pulled down to 60% by two harness artifacts — 3 broken
+> tasks and 8-way-concurrency timeouts — and once those are removed it solves 20 of 22 gradeable
+> tasks within 5 attempts. This is the §4.6 thesis at 753 B scale: **the harness, not the model,
+> explains most of the apparent gap from 60% to the card's 82.7.**
+
+#### 4.7.3 Why concurrency depressed the raw score
+
+The raw run used `-n 8` (8 hard tasks running at once on a single 8-GPU server). GLM-5.2's token
+throughput is the bottleneck, so 8-way contention starves each agent's inference and trips
+Harbor's wall-clock timeouts — precisely the failures the `-n 4` re-run recovered. A faithful
+pass@1 reproduction of the card would run tasks **serially** (or shard across multiple servers) to
+remove contention; the single-server 8x H200 budget made the concurrent run the pragmatic choice,
+at the cost of contention timeouts that the layered analysis then backs out. **6 of the 10 raw
+failures were timeout/abort errors, not wrong answers.**
+
+#### 4.7.4 Reproduction
+
+```bash
+# host exports consumed by Harbor's claude-code agent (bridge + overflow fix)
+export ANTHROPIC_BASE_URL=http://<host-ip>:4000        # LiteLLM Anthropic bridge -> SGLang
+export ANTHROPIC_AUTH_TOKEN=dummy                      # any non-empty token
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=32768             # 256K-context overflow fix (see 4.7.1)
+
+# raw single-run (25-task subset, 8-way concurrent)
+harbor run -d terminal-bench/terminal-bench-2 -a claude-code -m glm-5.2 -l 25 -k 1 -n 8 --yes
+
+# oracle harness-validity baseline (same 25 tasks, pinned by name)
+harbor run -d terminal-bench/terminal-bench-2 -a oracle -i terminal-bench/<task> [...x25] -k 1 -n 8 --yes
+
+# pass@5 on the 7 gradeable failures, low contention
+harbor run -d terminal-bench/terminal-bench-2 -a claude-code -m glm-5.2 \
+  -i terminal-bench/caffe-cifar-10 -i terminal-bench/build-pov-ray -i terminal-bench/dna-insert \
+  -i terminal-bench/make-mips-interpreter -i terminal-bench/overfull-hbox \
+  -i terminal-bench/polyglot-rust-c -i terminal-bench/video-processing \
+  -k 5 -n 4 --timeout-multiplier 2 --yes
+```
+
+Per-task rewards live under each job's `*/verifier/reward.txt`; aggregates in `result.json`
+(`metrics.mean`). The reported token totals (37.97 M in / 635 K out) and the agent's
+`cost_usd=117.47` are the Claude CLI's **Anthropic-price estimate**, not real local spend (the run
+used self-hosted GPUs). `-i/-x` task names require the `terminal-bench/` prefix and are repeatable
+— this is how the exact 25-task subset and the 7-failure set were pinned across runs.
 
 ## 5. Licensing and commercial-use suitability
 
