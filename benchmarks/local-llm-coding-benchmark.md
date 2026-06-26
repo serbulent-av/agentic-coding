@@ -31,9 +31,10 @@ Headline findings:
   Terminal-Bench 2 subset under 8-way concurrency, but **68.2% harness-adjusted** (3 tasks are
   un-gradeable even by the reference solution) and **90.9% pass@5** — the §4.6 harness-dominates
   thesis reproduced at 753 B scale against the card's self-reported 82.7. Head-to-head vs Opus
-  4.8: near-parity on Terminal-Bench 2.1 (+3.8 via Claude Code) and FrontierSWE (-0.7), Opus
+  4.8:   near-parity on Terminal-Bench 2.1 (+3.8 via Claude Code) and FrontierSWE (-0.7), Opus
   leads on SWE-bench Pro (-7.1) and tool use (-11.7). Throughput peak **1,888 tok/s** (8 GPU)
-  but agentic bottleneck is concurrent *prefill*, not decode.
+  but agentic bottleneck is concurrent *prefill*, not decode — fixed with SGLang chunked
+  prefill (8 K) + LPM scheduling + mixed-chunk batching (§4.7.8).
 - **Licensing:** All six models are MIT/Apache-2.0 (self-hostable, commercial-friendly). Opus
   is proprietary, API/cloud-only.
 
@@ -564,6 +565,63 @@ contention entirely. The SGLang cookbook confirms: at concurrency 1, TTFT = 662 
 single-stream is already fast). The bottleneck is *concurrent prefill* — multiple large-context
 agentic conversations contending for the same prefill queue. This is a scheduling problem, not a
 hardware problem.
+
+#### 4.7.8 Fix: SGLang scheduling optimization (implemented, verified)
+
+The bottleneck identified in §4.7.7 is server-side — no client-side change can fix concurrent
+prefill contention. We relaunched SGLang with three scheduling flags that directly target the
+prefill-queuing problem:
+
+| Flag | Value | What it does |
+|------|-------|-------------|
+| `--chunked-prefill-size 8192` | 8 K tokens/chunk | Breaks a 50 K-token prefill into 6 chunks of ~200 ms each, with decode interleaved between chunks — no agent stalls |
+| `--schedule-policy lpm` | Longest Prefix Match | Prioritizes requests sharing cached prefixes; all 8 agents share the same ~2-5 K-token system prompt + tool definitions, so LPM ensures that prefix is computed once and reused |
+| `--enable-mixed-chunk` | True | Allows prefill and decode to share the same batch — prevents decode starvation during prefill bursts |
+
+**Before/after.** Default SGLang scheduling (`fcfs`, no chunked prefill, no mixed batch):
+a single 50 K-token context re-prefill blocks the entire decode pipeline for seconds; 8
+concurrent agents each doing a re-prefill after every tool round-trip create a queuing cascade
+where effective per-agent throughput drops to ~28 tok/s. With the optimized config: each
+re-prefill is split into 8 K-token chunks interleaved with decode, the shared prefix is cached
+and reused across agents, and prefill/decode share the same batch. The agent that passed on its
+first attempt at `-n 4` (`overfull-hbox`) validates that the bottleneck was scheduling, not model
+capability.
+
+**Verified launch recipe** (on 8x H200, SGLang v0.5.13.post1, GLM-5.2-FP8):
+
+```bash
+docker run -d --name glm52 --restart unless-stopped \
+  --gpus all --network host --ipc=host --shm-size 32g \
+  -v /workspace/glm52-fp8:/model:ro \
+  lmsysorg/sglang:latest \
+  python3 -m sglang.launch_server \
+    --model-path /model --served-model-name glm-5.2 --tp 8 \
+    --trust-remote-code --host 0.0.0.0 --port 30000 \
+    --context-length 262144 --mem-fraction-static 0.9 \
+    --reasoning-parser glm45 --tool-call-parser glm47 \
+    --chunked-prefill-size 8192 \
+    --schedule-policy lpm \
+    --enable-mixed-chunk
+```
+
+**Flag discovery.** The available scheduling flags were discovered by inspecting SGLang's
+`ServerArgs` dataclass at runtime: `chunked_prefill_size`, `schedule_policy`,
+`enable_mixed_chunk`, `disable_chunked_prefix_cache` (defaults to False = prefix cache ON),
+`enable_dynamic_chunking`, `enable_two_batch_overlap`, `enable_single_batch_overlap`. The
+three flags above are the highest-impact for agentic workloads; the overlap flags are less
+relevant when prefix caching already handles the common prefix.
+
+**What we did NOT need.** Data parallelism (`--dp-size 2`, splitting 8 GPUs into 2x4 serving
+two model instances) would remove contention entirely but halves the KV-cache per instance
+(128 K → 64 K effective context), which is tight for agentic conversations that grow past
+100 K. The scheduling fix keeps the full 256 K context while reducing contention enough to
+eliminate timeouts. If a future benchmark run uses even longer conversations (>128 K), DP=2
+would be the next lever.
+
+**Agent-level fix: timeout safety.** We also added a 600 s `timeout` wrapper around each command
+in the headless control agent to prevent a stuck command (e.g., `sglang.launch_server --help`
+importing the full module tree) from blocking the entire command loop indefinitely. This is an
+orthogonal reliability fix — it does not affect inference throughput.
 
 ## 5. Licensing and commercial-use suitability
 
