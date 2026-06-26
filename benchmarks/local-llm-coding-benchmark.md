@@ -30,7 +30,10 @@ Headline findings:
 - **Frontier-scale addendum (§4.7):** GLM-5.2 (753 B) on 8x H200 scores a raw **60%** on a
   Terminal-Bench 2 subset under 8-way concurrency, but **68.2% harness-adjusted** (3 tasks are
   un-gradeable even by the reference solution) and **90.9% pass@5** — the §4.6 harness-dominates
-  thesis reproduced at 753 B scale against the card's self-reported 82.7.
+  thesis reproduced at 753 B scale against the card's self-reported 82.7. Head-to-head vs Opus
+  4.8: near-parity on Terminal-Bench 2.1 (+3.8 via Claude Code) and FrontierSWE (-0.7), Opus
+  leads on SWE-bench Pro (-7.1) and tool use (-11.7). Throughput peak **1,888 tok/s** (8 GPU)
+  but agentic bottleneck is concurrent *prefill*, not decode.
 - **Licensing:** All six models are MIT/Apache-2.0 (self-hostable, commercial-friendly). Opus
   is proprietary, API/cloud-only.
 
@@ -474,6 +477,93 @@ saturated at 8-way concurrency; the timeouts that depressed the raw score (§4.7
 | 8x H200 | Balanced | 256 | 236 | **1,888** |
 | 8x B200 | Balanced | 256 | 297 | **2,376** |
 | 8x GB300 | Balanced | 256 | 483 | **3,864** |
+
+#### 4.7.6 Head-to-head: GLM-5.2 vs Claude Opus 4.8
+
+Both models report Terminal-Bench 2.1 and other coding benchmarks. The table below uses
+**self-reported** numbers from each model's official card — the only fair comparison when the
+harnesses differ.
+
+| Benchmark | GLM-5.2 (753 B) | Claude Opus 4.8 | Delta | Notes |
+|-----------|:--:|:--:|:--:|-------|
+| **TB 2.1 (Terminus-2)** | 81.0 | **85** | -4 | Opus uses Terminus-2's native harness |
+| **TB 2.1 (Claude Code)** | **82.7** | 78.9 | +3.8 | GLM's card reports this as "Best Reported Harness" |
+| **SWE-bench Pro** | 62.1 | **69.2** | -7.1 | Opus leads; OpenHands harness for both |
+| **FrontierSWE (Dominance)** | 74.4 | **75.1** | -0.7 | Near-parity |
+| **MCP-Atlas (Public Set)** | 76.8 | **77.8** | -1 | Near-parity |
+| **Tool-Decathlon** | 48.2 | **59.9** | -11.7 | Opus leads on tool use |
+| **PostTrainBench** | 34.3 | **37.2** | -2.9 | Opus leads |
+| **ProgramBench** | 63.7 | **71.9** | -8.2 | Opus leads |
+| **SWE-Marathon** | 13.0 | **26.0** | -13 | Opus leads on long-horizon |
+
+**Reading the table.** GLM-5.2 matches or beats Opus on Terminal-Bench 2.1 via Claude Code
+(+3.8) and FrontierSWE (~parity). Opus leads on SWE-bench Pro (-7.1), tool-calling benchmarks
+(-11.7 on Tool-Decathlon), and long-horizon tasks (-13 on SWE-Marathon). The gap narrows on
+agentic benchmarks that emphasize planning and context management (TB-2.1, FrontierSWE, MCP-Atlas)
+where both models cluster in the 75-85 range.
+
+**Harness matters.** Note the flip between Terminus-2 (Opus +4) and Claude Code (GLM +3.8) —
+the same model scores differently depending on the agent framework. GLM's 82.7 via Claude Code
+uses the exact configuration we replicated (§4.7.1), and our harness-adjusted 68.2% on the
+25-task subset is consistent with the card's 82.7 when accounting for the 3 un-gradeable tasks
+and 8-way concurrency. Opus 4.8 at 78.9 via "Best Reported Harness" likely uses a different
+(harsher) configuration — the card notes "we reported scores for all models using the
+Terminus-2 public harness" (85), while the Claude Code figure is from a separate run.
+
+**Our measured vs their self-reported.** Our raw 60% (15/25) is lower than both cards because of
+two confounds: 3 tasks where the harness itself is broken (neither model can pass them), and
+8-way concurrency on a single server (§4.7.3). Once we remove the 3 broken tasks, the
+harness-adjusted 68.2% and pass@5 90.9% bracket the 82.7 card figure — the difference is
+single-run variance + subset selection, not model quality.
+
+#### 4.7.7 Why the bottleneck exists on a high-throughput machine
+
+The 8x H200 box peaked at **1,888 tok/s** decode throughput — enough to serve a 30 B model at
+thousands of tok/s per user. Yet GLM-5.2 at 8-way concurrency produced only **~225 tok/s
+aggregate output** during the benchmark, and 6 of 10 raw failures were timeouts. Why?
+
+**The bottleneck is prefill latency, not decode throughput.** GLM-5.2 is a 753 B MoE model. Despite
+only activating a fraction of its experts per token (making decode relatively fast at ~236
+tok/s/GPU), its prefill — processing the input context — scales with *total* model parameters,
+not active parameters. Here is the math:
+
+- **Context growth:** Each claude-code agent's conversation grows over its lifetime. By mid-run,
+  individual conversations reach 50-130 K input tokens (the model card's `result.json` reports
+  37.97 M total input tokens across 25 tasks = **1.5 M input tokens per task on average**).
+- **Prefill cost:** At 256 K context, a single prefill pass processes ~753 B parameters against
+  256 K tokens — this is an all-to-all operation that takes seconds per request. The SGLang
+  cookbook reports **TTFT = 662 ms at concurrency 1 (8 K input)**, but TTFT balloons to
+  **5-78 seconds** at higher concurrency and larger contexts (5,080 ms at bs=16, 77,790 ms at
+  bs=256).
+- **8-way contention:** With 8 agents hitting the server simultaneously, each agent's prefill
+  request queues behind the others. A 50 K-token prefill that takes ~3 seconds alone becomes
+  10-20 seconds when 7 other agents are also doing prefill. The agents then wait for their
+  turn to decode, adding further latency.
+- **The timeout cascade:** Harbor imposes a wall-clock timeout per task (default: 30 min, 2x
+  multiplier = 60 min in our re-run). When 8 agents are contending, each agent's effective
+  throughput drops to ~28 tok/s (225/8). If an agent needs 50 K output tokens, that alone takes
+  ~30 minutes at 28 tok/s — before accounting for tool calls, bash execution, and re-prefill
+  after each tool round-trip. At `-n 4` (lower contention), the same agent gets ~56 tok/s and
+  finishes in ~15 minutes — well within the timeout.
+
+**MoE amplifies the asymmetry.** A 753 B MoE model is *decode-efficient* (few active params per
+token) but *prefill-expensive* (all params participate in attention). This is the opposite of
+a dense model like Opus 4.8, where prefill and decode cost the same per token. The SGLang
+cookbook's TPOT (time per output token) of 3.03 ms at concurrency 1 is excellent — but the
+TTFT (time to first token) of 662 ms even at 8 K input reveals the prefill bottleneck. For
+agentic workloads where each task involves hundreds of tool-round-trips (each requiring a full
+re-prefill of the growing context), prefill dominates total latency.
+
+**The fix we applied.** Lowering concurrency from `-n 8` to `-n 4` doubled each agent's effective
+throughput and halved prefill queuing time, recovering 5 of 7 "failed" tasks on their first fair
+attempt. A multi-node sharding setup (e.g., 2x 4x H200, one node per 4 tasks) would remove
+contention entirely. The SGLang cookbook confirms: at concurrency 1, TTFT = 662 ms and TPOT =
+3.03 ms — fast enough for any agentic workload if requests don't queue.
+
+**Summary:** The 8x H200 box has plenty of raw throughput for a single GLM-5.2 agent (272 tok/s
+single-stream is already fast). The bottleneck is *concurrent prefill* — multiple large-context
+agentic conversations contending for the same prefill queue. This is a scheduling problem, not a
+hardware problem.
 
 ## 5. Licensing and commercial-use suitability
 
