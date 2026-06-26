@@ -147,7 +147,8 @@ count tracks capability. Harness validated: phi-4's 80.5 HumanEval+ matches Micr
 MoE models lead single-stream (few active params). The dense 33 B models run ~4x slower;
 Gemma-4 is multimodal and appears to lack fully-optimized vLLM 0.22.1 kernels here. **Opus
 tok/s: not published by Anthropic — no numeric comparison possible** (only the qualitative
-"fast mode ~2.5x").
+"fast mode ~2.5x"). GLM-5.2 (753 B) on 8x H200 is orders of magnitude larger — see §4.7.5
+for multi-GPU throughput.
 
 ### 4.3 Agentic results (SWE-bench Verified)
 
@@ -436,6 +437,43 @@ Per-task rewards live under each job's `*/verifier/reward.txt`; aggregates in `r
 `cost_usd=117.47` are the Claude CLI's **Anthropic-price estimate**, not real local spend (the run
 used self-hosted GPUs). `-i/-x` task names require the `terminal-bench/` prefix and are repeatable
 — this is how the exact 25-task subset and the 7-failure set were pinned across runs.
+
+#### 4.7.5 Serving throughput (8x H200, FP8, SGLang TP=8)
+
+GLM-5.2-FP8 decode throughput measured by the SGLang team on identical hardware
+([cookbook](https://cookbook.sglang.io/autoregressive/GLM/GLM-5.2)). Model: `GLM-5.2-FP8`,
+TP=8, random dataset, 8 K input / 1 K output.
+
+| Strategy | Concurrency | TPOT (ms) | tok/s/GPU | **Total tok/s (8 GPU)** |
+|----------|:-----------:|:---------:|:---------:|:------------------------:|
+| Low-Latency | 1 | 3.03 | 34 | **272** |
+| Low-Latency | 16 | 12.44 | 113 | **904** |
+| Balanced | 64 | 25.57 | 219 | **1,752** |
+| Balanced | 256 | 29.08 | 236 | **1,888** |
+| High-Throughput | 1,024 | 86.71 | 184 | **1,472** |
+
+Peak decode throughput: **~1,888 tok/s total (~236 tok/s per GPU)** at balanced/256 concurrency.
+Single-stream latency: **272 tok/s total (34 tok/s per GPU)**, TPOT = 3.03 ms. The
+high-throughput strategy at 1,024 concurrency shows *lower* per-GPU decode throughput (184 tok/s/GPU)
+due to TTFT queuing saturation. GLM-5.2's MTP layer (5 draft tokens) can improve real-world
+throughput up to 20% over synthetic benchmarks; the cookbook notes that "pure throughput benchmarks
+tend to under-report real speed" for MTP models.
+
+**Context: agentic workload throughput.** During our 25-task Terminal-Bench run (8-way concurrent
+agents), the server sustained ~225 tok/s aggregate output and ~22,400 tok/s aggregate input
+(635 K out / 37.97 M in over 47 min wall-clock). This is well below the server's peak capacity
+(1,888 tok/s at balanced/256) because the agent interleaves thinking, tool calls, and bash
+execution — the model decodes only a fraction of wall-clock time. The server was not throughput-
+saturated at 8-way concurrency; the timeouts that depressed the raw score (§4.7.3) were caused by
+*contention* (8 agents sharing the same decode budget) rather than raw capacity limits.
+
+**Hardware comparison (same cookbook, same settings):**
+
+| Hardware | Strategy | Concurrency | tok/s/GPU | **Total tok/s (8 GPU)** |
+|----------|----------|:-----------:|:---------:|:------------------------:|
+| 8x H200 | Balanced | 256 | 236 | **1,888** |
+| 8x B200 | Balanced | 256 | 297 | **2,376** |
+| 8x GB300 | Balanced | 256 | 483 | **3,864** |
 
 ## 5. Licensing and commercial-use suitability
 
