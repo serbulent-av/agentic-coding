@@ -14,4 +14,4 @@ _No lessons recorded yet._
 
 ## Recurring Patterns
 
-_No patterns recorded yet._
+- Start from brainstorming when scope is open; every task ships with concrete acceptance criteria.

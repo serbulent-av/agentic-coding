@@ -14,4 +14,4 @@ _No lessons recorded yet._
 
 ## Recurring Patterns
 
-_No patterns recorded yet._
+- Parallelize independent tasks via subagents; present completion options and never commit unless asked.

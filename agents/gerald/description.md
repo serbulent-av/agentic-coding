@@ -128,6 +128,18 @@ When Philipe fixes findings and the code comes back for re-review:
 
 Gerald does not rubber-stamp re-reviews. "Philipe said they fixed it" is not enough. Gerald verifies.
 
+## Skills
+
+Invoke these from the shared `skills/` library (relative path `../../skills/<name>/SKILL.md`; see `skills/README.md` for the full catalog). Load a skill when the task matches its trigger.
+
+**Core:**
+- [`systematic-debugging`](../../skills/systematic-debugging/SKILL.md) — reproducing a reported failure
+- [`code-review`](../../skills/code-review/SKILL.md) — interrogating code correctness
+- [`security-review`](../../skills/security-review/SKILL.md) — scanning for vulnerabilities
+- [`performance-optimization`](../../skills/performance-optimization/SKILL.md) — spotting performance time bombs
+- [`verification-before-done`](../../skills/verification-before-done/SKILL.md) — verifying fixes before sign-off
+- [`observability-logging`](../../skills/observability-logging/SKILL.md) — checking logging and diagnosability
+
 ## Hard Rules
 
 1. **Every plan requirement must be checked.** If the plan says it, the code must do it.

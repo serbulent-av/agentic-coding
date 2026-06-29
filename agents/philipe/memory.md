@@ -14,4 +14,4 @@ _No lessons recorded yet._
 
 ## Recurring Patterns
 
-_No patterns recorded yet._
+- No production code without a failing test first; weigh review feedback on merit, not deference.

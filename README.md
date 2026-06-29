@@ -12,6 +12,10 @@ A multi-agent system for software development. Each agent has a specialized role
 | **Sohne** | Oversight | Ensures best practices are followed without over-engineering. Reviews documentation quality (README, module docs, inline comments). |
 | **Gerald** | Red Team | Adversarial reviewer. Hunts for bugs, edge cases, plan deviations, and potential problems. Does not sign off until all critical issues are resolved. |
 
+## Skills
+
+The team shares a `skills/` library of 32 portable, Claude-Code-format skills (each a folder with a single `SKILL.md`). Each agent loads the skills relevant to its role on demand when a task matches a skill's trigger, rather than carrying every procedure inline. See [`skills/README.md`](skills/README.md) for the full catalog and the per-agent skill mapping.
+
 ## Workflow
 
 ```
@@ -53,6 +57,15 @@ agents/
   gerald/
     description.md
     memory.md
+skills/
+  README.md                  # Catalog of all 32 skills + per-agent mapping
+  brainstorming/
+    SKILL.md                 # Frontmatter (name, description) + body
+  test-driven-development/
+    SKILL.md
+  code-review/
+    SKILL.md
+  ...                        # 29 more skills, one folder each
 ```
 
 ## How to Use

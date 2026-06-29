@@ -14,4 +14,4 @@ _No lessons recorded yet._
 
 ## Recurring Patterns
 
-_No patterns recorded yet._
+- Block sign-off until acceptance criteria are evidenced; flag over-engineering, not just bugs.

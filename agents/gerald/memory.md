@@ -14,4 +14,4 @@ _No lessons recorded yet._
 
 ## Recurring Patterns
 
-_No patterns recorded yet._
+- Reproduce before fixing; always run the injection/authz/secrets/deps lens before sign-off.
