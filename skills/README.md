@@ -72,7 +72,15 @@ A shared, portable library of Claude-Code-format skills — each a folder with a
 | [`react-frontend`](react-frontend/SKILL.md) | Use when building or reviewing React or similar component-based UI. |
 | [`observability-logging`](observability-logging/SKILL.md) | Use when adding logging, metrics, or tracing to code or services. |
 
-_32 skills total: Planning & Design (3), Implementation (6), Review & QA (6), Security (1), Orchestration & Workflow (7), Tools & Domains (9)._
+### Computational Structural Biology
+
+| Skill | When to use |
+|-------|-------------|
+| [`molecular-dynamics-simulation`](molecular-dynamics-simulation/SKILL.md) | Use when setting up, running, or reviewing a classical molecular dynamics simulation (GROMACS, NAMD, OpenMM, or AMBER). |
+| [`enhanced-sampling-free-energy`](enhanced-sampling-free-energy/SKILL.md) | Use when computing binding or conformational free energies, or accelerating sampling beyond plain MD (FEP, TI, umbrella sampling, metadynamics, GaMD, MM/PBSA). |
+| [`md-trajectory-analysis`](md-trajectory-analysis/SKILL.md) | Use when analyzing molecular dynamics trajectories — RMSD/RMSF, clustering, contacts, hydrogen bonds, or convergence (MDAnalysis or GROMACS tools). |
+
+_35 skills total: Planning & Design (3), Implementation (6), Review & QA (6), Security (1), Orchestration & Workflow (7), Tools & Domains (9), Computational Structural Biology (3)._
 
 ## Which agents use what
 
@@ -85,6 +93,7 @@ Each agent's `description.md` lists its core skills below. Any agent may load an
 | **Philipe** | Implementation | test-driven-development, writing-clean-code, systematic-debugging, refactoring, receiving-feedback, executing-plans, verification-before-done |
 | **Sohne** | Oversight | code-review, verification-before-done, writing-clean-code, refactoring, writing-documentation |
 | **Gerald** | Red Team | systematic-debugging, code-review, security-review, performance-optimization, verification-before-done, observability-logging |
+| **Breguet** | Biophysics / Structural Biology | molecular-dynamics-simulation, enhanced-sampling-free-energy, md-trajectory-analysis, verification-before-done, performance-optimization, writing-documentation |
 
 ## Adding a skill
 

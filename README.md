@@ -11,10 +11,11 @@ A multi-agent system for software development. Each agent has a specialized role
 | **Lange** | Planning | Creates and maintains the project plan. Monitors progress and expands the plan when new information emerges. |
 | **Sohne** | Oversight | Ensures best practices are followed without over-engineering. Reviews documentation quality (README, module docs, inline comments). |
 | **Gerald** | Red Team | Adversarial reviewer. Hunts for bugs, edge cases, plan deviations, and potential problems. Does not sign off until all critical issues are resolved. |
+| **Breguet** | Biophysics / Structural Biology | Computational structural biology domain expert. Validates molecular dynamics and free-energy work for scientific correctness, convergence, and reproducibility. |
 
 ## Skills
 
-The team shares a `skills/` library of 32 portable, Claude-Code-format skills (each a folder with a single `SKILL.md`). Each agent loads the skills relevant to its role on demand when a task matches a skill's trigger, rather than carrying every procedure inline. See [`skills/README.md`](skills/README.md) for the full catalog and the per-agent skill mapping.
+The team shares a `skills/` library of 35 portable, Claude-Code-format skills (each a folder with a single `SKILL.md`). Each agent loads the skills relevant to its role on demand when a task matches a skill's trigger, rather than carrying every procedure inline. See [`skills/README.md`](skills/README.md) for the full catalog and the per-agent skill mapping.
 
 ## Workflow
 
@@ -57,15 +58,18 @@ agents/
   gerald/
     description.md
     memory.md
+  breguet/
+    description.md
+    memory.md
 skills/
-  README.md                  # Catalog of all 32 skills + per-agent mapping
+  README.md                  # Catalog of all 35 skills + per-agent mapping
   brainstorming/
     SKILL.md                 # Frontmatter (name, description) + body
   test-driven-development/
     SKILL.md
   code-review/
     SKILL.md
-  ...                        # 29 more skills, one folder each
+  ...                        # 32 more skills, one folder each
 ```
 
 ## How to Use
@@ -73,7 +77,7 @@ skills/
 1. **Start with Patek**: Give your project prompt to Patek. It will orchestrate the entire process.
 2. **Lange plans**: Lange produces a structured plan with milestones, tasks, and acceptance criteria.
 3. **Philipe builds**: Philipe implements the plan step by step, following coding standards.
-4. **Sohne and Gerald review**: After each step, Sohne checks for best practices and documentation, while Gerald hunts for bugs and issues.
+4. **Sohne and Gerald review**: After each step, Sohne checks for best practices and documentation, while Gerald hunts for bugs and issues. For computational structural biology work, Breguet also reviews for scientific validity, convergence, and reproducibility.
 5. **Iterate**: Feedback loops back to Philipe until both reviewers sign off.
 6. **Patek logs everything**: The full activity log is available for audit and learning.
 
