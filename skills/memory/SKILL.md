@@ -1,34 +1,30 @@
 ---
 name: memory
-description: Record and retrieve team lessons and recurring patterns across runs. Use when an agent learns a non-obvious fact, a run finishes with a reusable takeaway, or when recalling prior decisions/gotchas for this repo. Stores entries in MEMORY.md and reads them back just-in-time (never dumps the whole file into context).
+description: Record and retrieve per-agent lessons and recurring patterns across runs. Use when an agent learns a non-obvious fact, finishes a run with a reusable takeaway, or needs to recall prior decisions/gotchas. Stores one-line entries in that agent's agents/<name>/memory.md and reads them back just-in-time (never dumps the whole file).
 ---
 
-# Team memory
+# Agent memory
 
-A single shared, append-only log that replaces the per-agent `memory.md` stubs.
-
-## File
-
-`MEMORY.md` at the repo root, in three sections: `## Sessions`, `## Lessons`,
-`## Recurring patterns`.
+Each agent keeps its own memory log at `agents/<name>/memory.md` (sections:
+`## Sessions`, `## Lessons`, `## Recurring Patterns`). This restores the original
+learning loop — keep entries compact so memory stays high-signal, not a context hog.
 
 ## Write (after a run / on a non-obvious learning)
 
-Append ONE compact entry — a fact, not a transcript:
+Append ONE line to the relevant section of *your* `agents/<name>/memory.md`:
 
 ```
-- [2026-08-29] <lesson or pattern in one line> (context: <task/team>; why it mattered)
+- [YYYY-MM-DD] <lesson or pattern in one line> (context: <task>; why it mattered)
 ```
 
-Keep entries to a single line each. Never paste diffs, transcripts, or code blocks.
+Never paste diffs, transcripts, or code blocks into memory.
 
 ## Read (just-in-time)
 
-Before planning or reviewing, pull only what's relevant:
+Before planning/building/reviewing, pull only what's relevant from your own log:
 
 ```bash
-grep -i "<keyword>" MEMORY.md
+grep -i "<keyword>" agents/<name>/memory.md
 ```
 
-Do NOT load the whole file into context — retrieve selectively. This keeps memory
-useful without becoming a context hog.
+Do NOT load the whole file into context — retrieve selectively.

@@ -45,13 +45,14 @@ User Prompt
     philipe.md           #   implementer (subagent) — the only role that edits
     sohne.md             #   oversight review (subagent, hidden)
     gerald.md            #   red-team review (subagent, hidden)
+agents/                  # canonical personas + per-agent memory
+  patek/{description,memory}.md    # ... lange, philipe, sohne, gerald
 skills/                  # tool-agnostic Agent Skills (shared, not owned by opencode)
   graphify/SKILL.md      #   queryable code knowledge graph
-  memory/SKILL.md        #   append/retrieve one-line lessons in MEMORY.md
-orchestrator/            # headless per-dispatch supervisor (python -m orchestrator)
-tests/                   # unit tests (no GPU)
+  memory/SKILL.md        #   append/retrieve lessons in agents/<name>/memory.md
+  plan-doc/ code-review/ red-team-review/ activity-log/
+orchestrator/            # thin launcher that spawns orch teams (the agent orchestrates)
 docs/                    # upgrade plan + integration docs
-MEMORY.md                # shared team memory (replaces per-agent memory.md stubs)
 graphify-out/            # this repo's knowledge graph (graph.json + report)
 ```
 
@@ -73,14 +74,16 @@ indexes the repo and dispatches team(s).
 3. **Lange plans** → **Philipe builds** → **Sohne + Gerald review** in parallel →
    feedback loops to Philipe until both sign off.
 4. **Gates + escalation** (deterministic, then cost-capped frontier) decide done/blocked.
-5. **Memory**: durable lessons are appended to `MEMORY.md` (via the `memory` skill)
-   and grepped back just-in-time.
+5. **Memory**: each agent appends durable lessons to its own `agents/<name>/memory.md`
+   (via the `memory` skill) and greps it back just-in-time.
 
 ## Agent & skill files
 
-- Each agent is a single opencode agent file in `.opencode/agent/` — frontmatter
-  (mode, permissions, model) + a distilled prompt. There is **one** canonical home;
-  the old `agents/<name>/description.md` + `memory.md` prose was consolidated here.
+- **Canonical personas + memory** live in `agents/<name>/` — `description.md` (the
+  full role instruction manual) and `memory.md` (that agent's running lesson log).
+- **Runnable opencode agents** live in `.opencode/agent/` — thin wrappers
+  (frontmatter: mode/permissions/model + a compact prompt) that point at the
+  canonical persona in `agents/<name>/description.md`.
 - Skills live once in the tool-neutral `./skills/` dir (Agent Skills format — the
   same `SKILL.md` works with opencode, Claude Code, Cursor, Codex, etc.; each tool
   just points at the path). They are **pinned per agent** (frontmatter allows them
