@@ -38,23 +38,26 @@ User Prompt
 
 ```
 .opencode/
-  agent/                 # the team, as opencode agents (single source of truth)
+  agent/                 # runnable opencode agents (thin wrappers over the personas)
     orch.md              #   orchestrator / dispatcher (primary) — starts runs
-    patek.md             #   team lead (primary) — coordinates one team
-    lange.md             #   planner (subagent, hidden)
+    patek.md             #   team lead (hidden subagent) — coordinates one team
+    lange.md             #   planner (hidden subagent)
     philipe.md           #   implementer (subagent) — the only role that edits
-    sohne.md             #   oversight review (subagent, hidden)
-    gerald.md            #   red-team review (subagent, hidden)
-agents/                  # canonical personas + per-agent memory
-  patek/{description,memory}.md    # ... lange, philipe, sohne, gerald
+    sohne.md             #   oversight review (hidden subagent)
+    gerald.md            #   red-team review (hidden subagent)
+agents/                  # canonical personas + per-agent memory (source of truth)
+  orch/{description,memory}.md     # ... patek, lange, philipe, sohne, gerald
 skills/                  # tool-agnostic Agent Skills (shared, not owned by opencode)
   graphify/SKILL.md      #   queryable code knowledge graph
   memory/SKILL.md        #   append/retrieve lessons in agents/<name>/memory.md
   plan-doc/ code-review/ red-team-review/ activity-log/
-orchestrator/            # thin launcher that spawns orch teams (the agent orchestrates)
 docs/                    # upgrade plan + integration docs
 graphify-out/            # this repo's knowledge graph (graph.json + report)
 ```
+
+> The orchestrator is an **agent** (`orch`), not a script — there is no
+> `orchestrator/` code package. Orch dispatches teams as **parallel subagents** via
+> opencode's Task tool; the orchestration intelligence lives in the agents + skills.
 
 ## How to Use
 
@@ -67,9 +70,8 @@ a raw agent and bypass the orchestrator — every prompt lands on `orch`, which
 indexes the repo and dispatches team(s).
 
 1. **Start with the orchestrator (`orch`)**: give it a task (or a batch). It first
-   Graphify-indexes the repo, then spins up one **Patek** team per task in an
-   isolated git worktree, and supervises them. (`python -m orchestrator dispatch
-   <repo> "<task...>"` for the headless path.)
+   Graphify-indexes the repo, then **dispatches one Patek team per task as parallel
+   subagents** (via the Task tool) and supervises them to completion.
 2. **Patek leads each team**: coordinates and delegates; never writes code.
 3. **Lange plans** → **Philipe builds** → **Sohne + Gerald review** in parallel →
    feedback loops to Philipe until both sign off.
@@ -98,19 +100,18 @@ This repo wires the team to two tools:
 - **Graphify** — a queryable knowledge graph of the codebase (`graphify-out/graph.json`)
   so agents answer architecture questions by querying the graph instead of grepping.
   See [docs/graphify.md](docs/graphify.md). Skill lives at `skills/graphify/`.
-- **Headless Orchestrator** — dispatches and supervises teams of these agents
-  (worktree-per-task, deterministic gates, cost-capped escalation), templated on the
-  Agent Orchestrator. **Graphify-first:** every repo is indexed before a team runs on
-  it; **active on dispatch:** `python -m orchestrator dispatch <repo> <task...>` *is*
-  the orchestrator. See [docs/orchestrator.md](docs/orchestrator.md).
+- **Orchestrator** — an *agent* (`orch`), not a script. Templated on the Agent
+  Orchestrator's ideas (worktree isolation, derived status, durable facts) but the
+  reasoning is done by the model. **Graphify-first:** every repo is indexed before a
+  team runs on it; **active on dispatch:** `orch` spawns Patek teams as parallel
+  subagents via the Task tool and supervises them. See
+  [docs/orchestrator.md](docs/orchestrator.md).
 
-The five agents are wired as opencode agents under `.opencode/agent/` (Patek primary;
-Lange/Philipe/Sohne/Gerald hidden subagents). Quick start:
-
-```bash
-python -m orchestrator dispatch . "add a health-check endpoint" "write tests for X"
-python -m orchestrator board     # derived Kanban from durable facts
-```
+The six agents are wired as opencode agents under `.opencode/agent/` — thin wrappers
+over the canonical personas in `agents/<name>/description.md`. `orch` is the only
+selectable primary; Patek + the four workers are hidden subagents it invokes.
+Quick start: open the repo in opencode (starts on `orch`) and give it a task or a
+batch — it indexes, dispatches teams, and supervises.
 
 ## Benchmarks
 
