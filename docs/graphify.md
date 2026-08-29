@@ -7,8 +7,9 @@ grepping or reading whole files (smaller, higher-signal context).
 ## What's installed
 
 - CLI: `graphify` (installed via `uv tool install graphifyy`).
-- Skill: `.opencode/skills/graphify/SKILL.md` (project-scoped, in the default
-  opencode skill path; also readable by Claude/agent-skills).
+- Skill: `skills/graphify/SKILL.md` — tool-agnostic Agent Skills format, shared
+  across tools (opencode loads it via `"skills": {"paths": ["skills"]}`; the same
+  folder is readable by Claude Code / Cursor / Codex under `.agents/skills/`).
 - Index: `graphify-out/graph.json` (+ `GRAPH_REPORT.md`, `graph.html`).
 
 ## Bash-callable usage (works in any shell-driven agent)

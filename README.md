@@ -45,9 +45,9 @@ User Prompt
     philipe.md           #   implementer (subagent) — the only role that edits
     sohne.md             #   oversight review (subagent, hidden)
     gerald.md            #   red-team review (subagent, hidden)
-  skills/                # shared skills (progressive disclosure)
-    graphify/SKILL.md    #   queryable code knowledge graph
-    memory/SKILL.md      #   append/retrieve one-line lessons in MEMORY.md
+skills/                  # tool-agnostic Agent Skills (shared, not owned by opencode)
+  graphify/SKILL.md      #   queryable code knowledge graph
+  memory/SKILL.md        #   append/retrieve one-line lessons in MEMORY.md
 orchestrator/            # headless per-dispatch supervisor (python -m orchestrator)
 tests/                   # unit tests (no GPU)
 docs/                    # upgrade plan + integration docs
@@ -73,9 +73,12 @@ graphify-out/            # this repo's knowledge graph (graph.json + report)
 - Each agent is a single opencode agent file in `.opencode/agent/` — frontmatter
   (mode, permissions, model) + a distilled prompt. There is **one** canonical home;
   the old `agents/<name>/description.md` + `memory.md` prose was consolidated here.
-- Skills live once in `.opencode/skills/` and are **pinned per agent** (each agent's
-  frontmatter allows them and its prompt states they are already available), so
-  agents use them directly rather than re-discovering them each run.
+- Skills live once in the tool-neutral `./skills/` dir (Agent Skills format — the
+  same `SKILL.md` works with opencode, Claude Code, Cursor, Codex, etc.; each tool
+  just points at the path). They are **pinned per agent** (frontmatter allows them
+  and the prompt states they are already available), so agents use them directly
+  rather than re-discovering them each run. opencode loads them via
+  `"skills": { "paths": ["skills"] }` in `opencode.json`.
 
 ## Integrations
 
@@ -83,7 +86,7 @@ This repo wires the team to two tools:
 
 - **Graphify** — a queryable knowledge graph of the codebase (`graphify-out/graph.json`)
   so agents answer architecture questions by querying the graph instead of grepping.
-  See [docs/graphify.md](docs/graphify.md). Skill lives at `.opencode/skills/graphify/`.
+  See [docs/graphify.md](docs/graphify.md). Skill lives at `skills/graphify/`.
 - **Headless Orchestrator** — dispatches and supervises teams of these agents
   (worktree-per-task, deterministic gates, cost-capped escalation), templated on the
   Agent Orchestrator. **Graphify-first:** every repo is indexed before a team runs on
