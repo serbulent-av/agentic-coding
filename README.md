@@ -71,6 +71,27 @@ Each agent has two files:
 - **`description.md`**: Defines the agent's role, responsibilities, workflow, and rules. This is the agent's "instruction manual".
 - **`memory.md`**: A running log of experiences, lessons learned, and recurring patterns. Updated after each project to improve future performance.
 
+## Integrations
+
+This repo wires the team to two tools:
+
+- **Graphify** — a queryable knowledge graph of the codebase (`graphify-out/graph.json`)
+  so agents answer architecture questions by querying the graph instead of grepping.
+  See [docs/graphify.md](docs/graphify.md). Skill lives at `.agents/skills/graphify/`.
+- **Headless Orchestrator** — dispatches and supervises teams of these agents
+  (worktree-per-task, deterministic gates, cost-capped escalation), templated on the
+  Agent Orchestrator. **Graphify-first:** every repo is indexed before a team runs on
+  it; **active on dispatch:** `python -m orchestrator dispatch <repo> <task...>` *is*
+  the orchestrator. See [docs/orchestrator.md](docs/orchestrator.md).
+
+The five agents are wired as opencode agents under `.opencode/agent/` (Patek primary;
+Lange/Philipe/Sohne/Gerald hidden subagents). Quick start:
+
+```bash
+python -m orchestrator dispatch . "add a health-check endpoint" "write tests for X"
+python -m orchestrator board     # derived Kanban from durable facts
+```
+
 ## Benchmarks
 
 - [Local LLM Coding Benchmark](benchmarks/local-llm-coding-benchmark.md) — HumanEval+ / MBPP+ pass@1 for open-weight coding models that fit on a single NVIDIA H100 80GB, served with vLLM and scored with EvalPlus. Includes the reproduction script (`benchmarks/run_bench.sh`) and raw run logs.
