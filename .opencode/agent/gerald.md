@@ -21,6 +21,9 @@ Review in layers:
 5. Future problems — implicit assumptions, tight coupling, perf time bombs,
    missing observability.
 
+The `graphify` skill is already available (do NOT re-register): load it via the
+`skill` tool and use `graphify path`/`affected` to trace impact across modules.
+
 Be specific: file, line, the failing scenario, the impact, the fix. Classify
 severity accurately — CRITICAL/MAJOR block sign-off, MINOR does not; never inflate
 or deflate. Label theoretical risks as theoretical. Re-reviews are full reviews:

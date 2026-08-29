@@ -37,39 +37,45 @@ User Prompt
 ## Repository Structure
 
 ```
-agents/
-  patek/
-    description.md   # Role, responsibilities, workflow, rules
-    memory.md         # Experience log across projects
-  philipe/
-    description.md
-    memory.md
-  lange/
-    description.md
-    memory.md
-  sohne/
-    description.md
-    memory.md
-  gerald/
-    description.md
-    memory.md
+.opencode/
+  agent/                 # the team, as opencode agents (single source of truth)
+    orch.md              #   orchestrator / dispatcher (primary) — starts runs
+    patek.md             #   team lead (primary) — coordinates one team
+    lange.md             #   planner (subagent, hidden)
+    philipe.md           #   implementer (subagent) — the only role that edits
+    sohne.md             #   oversight review (subagent, hidden)
+    gerald.md            #   red-team review (subagent, hidden)
+  skills/                # shared skills (progressive disclosure)
+    graphify/SKILL.md    #   queryable code knowledge graph
+    memory/SKILL.md      #   append/retrieve one-line lessons in MEMORY.md
+orchestrator/            # headless per-dispatch supervisor (python -m orchestrator)
+tests/                   # unit tests (no GPU)
+docs/                    # upgrade plan + integration docs
+MEMORY.md                # shared team memory (replaces per-agent memory.md stubs)
+graphify-out/            # this repo's knowledge graph (graph.json + report)
 ```
 
 ## How to Use
 
-1. **Start with Patek**: Give your project prompt to Patek. It will orchestrate the entire process.
-2. **Lange plans**: Lange produces a structured plan with milestones, tasks, and acceptance criteria.
-3. **Philipe builds**: Philipe implements the plan step by step, following coding standards.
-4. **Sohne and Gerald review**: After each step, Sohne checks for best practices and documentation, while Gerald hunts for bugs and issues.
-5. **Iterate**: Feedback loops back to Philipe until both reviewers sign off.
-6. **Patek logs everything**: The full activity log is available for audit and learning.
+1. **Start with the orchestrator (`orch`)**: give it a task (or a batch). It first
+   Graphify-indexes the repo, then spins up one **Patek** team per task in an
+   isolated git worktree, and supervises them. (`python -m orchestrator dispatch
+   <repo> "<task...>"` for the headless path.)
+2. **Patek leads each team**: coordinates and delegates; never writes code.
+3. **Lange plans** → **Philipe builds** → **Sohne + Gerald review** in parallel →
+   feedback loops to Philipe until both sign off.
+4. **Gates + escalation** (deterministic, then cost-capped frontier) decide done/blocked.
+5. **Memory**: durable lessons are appended to `MEMORY.md` (via the `memory` skill)
+   and grepped back just-in-time.
 
-## Agent Files
+## Agent & skill files
 
-Each agent has two files:
-
-- **`description.md`**: Defines the agent's role, responsibilities, workflow, and rules. This is the agent's "instruction manual".
-- **`memory.md`**: A running log of experiences, lessons learned, and recurring patterns. Updated after each project to improve future performance.
+- Each agent is a single opencode agent file in `.opencode/agent/` — frontmatter
+  (mode, permissions, model) + a distilled prompt. There is **one** canonical home;
+  the old `agents/<name>/description.md` + `memory.md` prose was consolidated here.
+- Skills live once in `.opencode/skills/` and are **pinned per agent** (each agent's
+  frontmatter allows them and its prompt states they are already available), so
+  agents use them directly rather than re-discovering them each run.
 
 ## Integrations
 
@@ -77,7 +83,7 @@ This repo wires the team to two tools:
 
 - **Graphify** — a queryable knowledge graph of the codebase (`graphify-out/graph.json`)
   so agents answer architecture questions by querying the graph instead of grepping.
-  See [docs/graphify.md](docs/graphify.md). Skill lives at `.agents/skills/graphify/`.
+  See [docs/graphify.md](docs/graphify.md). Skill lives at `.opencode/skills/graphify/`.
 - **Headless Orchestrator** — dispatches and supervises teams of these agents
   (worktree-per-task, deterministic gates, cost-capped escalation), templated on the
   Agent Orchestrator. **Graphify-first:** every repo is indexed before a team runs on
