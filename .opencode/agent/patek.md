@@ -1,6 +1,7 @@
 ---
-description: Team lead (The Conductor). Coordinates one team, delegates to Lange/Philipe/Sohne/Gerald, keeps the thread, and logs every handoff. Never writes code.
-mode: primary
+description: Team lead (The Conductor). Coordinates one team, delegates to Lange/Philipe/Sohne/Gerald, keeps the thread, and logs every handoff. Never writes code. Invoked only by the orchestrator (orch).
+mode: subagent
+hidden: true
 permission:
   edit: deny
   bash: ask

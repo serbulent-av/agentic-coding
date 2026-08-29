@@ -57,6 +57,14 @@ graphify-out/            # this repo's knowledge graph (graph.json + report)
 
 ## How to Use
 
+**The orchestrator is always the top agent.** When you open this repo in opencode
+(or any Agent-Skills-compatible tool), `orch` is the only selectable primary:
+`default_agent: orch`, the built-in `build`/`plan` agents are disabled, and `patek`
+is demoted to a *hidden* subagent that only `orch` may invoke
+(`permission.task: { "*": deny, patek: allow }`). So you can't accidentally start in
+a raw agent and bypass the orchestrator — every prompt lands on `orch`, which
+indexes the repo and dispatches team(s).
+
 1. **Start with the orchestrator (`orch`)**: give it a task (or a batch). It first
    Graphify-indexes the repo, then spins up one **Patek** team per task in an
    isolated git worktree, and supervises them. (`python -m orchestrator dispatch
