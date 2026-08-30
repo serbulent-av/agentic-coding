@@ -6,11 +6,12 @@ A multi-agent system for software development. Each agent has a specialized role
 
 | Agent | Role | Description |
 |-------|------|-------------|
-| **Patek** | Main / Orchestrator | Coordinates all agents, delegates tasks, and logs every action into an activity log. The central hub of the system. |
-| **Philipe** | Implementation | Analyzes requirements, plans the implementation, and writes the code. Iterates based on review feedback. |
-| **Lange** | Planning | Creates and maintains the project plan. Monitors progress and expands the plan when new information emerges. |
-| **Sohne** | Oversight | Ensures best practices are followed without over-engineering. Reviews documentation quality (README, module docs, inline comments). |
-| **Gerald** | Red Team | Adversarial reviewer. Hunts for bugs, edge cases, plan deviations, and potential problems. Does not sign off until all critical issues are resolved. |
+| **Orch** | Orchestrator / entry point | The top agent. Graphify-indexes the repo, splits the goal into bounded tasks, and dispatches one Patek team per task as parallel subagents, then supervises them. The only user-selectable primary. |
+| **Patek** | Team lead | Coordinates one team: delegates to Lange/Philipe/Sohne/Gerald, keeps the thread, logs every handoff. Never writes code. |
+| **Lange** | Planning | Turns the ask into an executable plan — explicit scope, dependencies, testable acceptance criteria. |
+| **Philipe** | Implementation | Writes the code, step by step; the only role that edits. Iterates on review feedback. |
+| **Sohne** | Oversight | Reviews for quality, simplicity, and docs; hunts over-engineering as hard as sloppiness. |
+| **Gerald** | Red Team | Adversarial reviewer. Hunts bugs, edge cases, plan deviations, security. Won't sign off until critical issues are resolved. |
 
 ## Workflow
 
@@ -18,6 +19,9 @@ A multi-agent system for software development. Each agent has a specialized role
 User Prompt
     |
     v
+ [Orch] -- graphify-index repo, split into tasks, dispatch teams (parallel subagents)
+    |
+    v  (one team per task)
  [Patek] -- delegates to --> [Lange] (creates plan)
     |
     v
@@ -30,8 +34,8 @@ User Prompt
     v  (if issues found)
  [Patek] -- routes feedback to --> [Philipe] (fixes)
     |
-    v  (repeat until sign-off)
- [Patek] -- compiles final log and delivers result
+    v  (repeat until both sign off)
+ [Patek] -- delivers result --> [Orch] -- supervises fleet, closes out
 ```
 
 ## Repository Structure
@@ -50,7 +54,8 @@ agents/                  # canonical personas + per-agent memory (source of trut
 skills/                  # tool-agnostic Agent Skills (39; shared, not owned by opencode)
   graphify/ memory/ plan-doc/ code-review/ red-team-review/ activity-log/   # team-specific
   subagent-orchestration/ writing-plans/ test-driven-development/ ...        # general library
-docs/                    # upgrade plan + integration docs
+tests/                   # skill-wiring guard (test_skills.py)
+docs/                    # integration docs (+ historical upgrade plan)
 graphify-out/            # this repo's knowledge graph (graph.json + report)
 ```
 

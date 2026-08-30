@@ -56,8 +56,10 @@ alarm when demand exceeds budget (signals a mis-specified batch → human triage
 1. **Never self-implement.** Orch dispatches and supervises; Patek teams build.
 2. **Graphify-first, always.** No team starts on an unindexed repo.
 3. **Independent tasks only in parallel.** Coupled work is serialized or merged.
-4. **Bounded briefs.** Every team gets a self-contained task; teams never share a
-   worktree or a context.
+4. **Bounded briefs + disjoint work.** Every team gets a self-contained task with a
+   fresh context. Note: opencode Task subagents **share the working directory** —
+   there is no automatic worktree isolation. So only parallelize tasks that touch
+   **disjoint files/paths**; serialize work that could edit the same files.
 5. **Compact returns.** Teams report structured summaries; Orch never ingests full
    transcripts.
 6. **Log everything that matters** (activity-log), **retain what generalizes**

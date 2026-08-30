@@ -1,8 +1,17 @@
 # Agentic Team Upgrade Plan (v1)
 
-Status: **draft, revised after adversarial team review.** Owner: Patek (orchestrator).
-Scope: modernize the Patek/Lange/Philipe/Sohne/Gerald team and how it is dispatched and
-supervised, on the **existing mini-swe-agent + local-vLLM harness** (not opencode).
+> **HISTORICAL — SUPERSEDED.** This is the original research/plan written for a
+> *mini-swe-agent* runtime. The repo was ultimately built on **opencode**: the team
+> runs as opencode agents (`orch` → `patek` → `lange`/`philipe`/`sohne`/`gerald`),
+> the orchestrator is a pure **agent** (no Python package), and skills are real
+> Agent-Skills under `skills/`. Read this only for background/rationale; for what
+> exists, see [orchestrator.md](orchestrator.md), [graphify.md](graphify.md), and
+> the repo `README.md`.
+
+Status: **historical draft (mini-swe-agent era), superseded by the opencode build.**
+Scope (as originally written): modernize the Patek/Lange/Philipe/Sohne/Gerald team
+and how it is dispatched and supervised, on the **mini-swe-agent + local-vLLM
+harness** (not opencode).
 
 > This v1 supersedes the v0 draft. Every one of the four reviewers (Lange, Philipe, Sohne,
 > Gerald) returned **BLOCKED** on v0. Their must-fixes are folded in below; see the

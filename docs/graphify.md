@@ -9,16 +9,16 @@ grepping or reading whole files (smaller, higher-signal context).
 - CLI: `graphify` (installed via `uv tool install graphifyy`).
 - Skill: `skills/graphify/SKILL.md` — tool-agnostic Agent Skills format, shared
   across tools (opencode loads it via `"skills": {"paths": ["skills"]}`; the same
-  folder is readable by Claude Code / Cursor / Codex under `.agents/skills/`).
+  `skills/` folder is readable by other Agent-Skills-compatible tools).
 - Index: `graphify-out/graph.json` (+ `GRAPH_REPORT.md`, `graph.html`).
 
 ## Bash-callable usage (works in any shell-driven agent)
 
 ```bash
-graphify query "what connects the orchestrator to git worktrees?"   # scoped subgraph
-graphify path "Supervisor" "GitWorkspace"     # shortest path between two nodes
-graphify explain "run_gates"                  # one node + its neighbors
-graphify god-nodes --top 10                   # architectural hubs
+graphify query "how does orch dispatch teams?"   # scoped subgraph
+graphify god-nodes --top 10                       # architectural hubs
+graphify explain "orch"                           # one node + its neighbors
+graphify path "orch" "patek"                       # shortest path between two nodes
 ```
 
 The index is local and deterministic (tree-sitter AST for code — no API key needed
@@ -32,8 +32,10 @@ graphify update .            # re-extract changed code files (no LLM)
 graphify cluster-only .      # regenerate GRAPH_REPORT.md + graph.html
 ```
 
-The orchestrator runs this automatically before dispatching a team
-(`orchestrator.index.ensure_indexed`), so an agent never starts on a stale index.
+The `orch` agent invokes the `graphify` skill to (re)index a repo before dispatching
+a team, so agents never query a stale graph. Note: `graphify update` refuses to
+shrink the graph; after deleting code, rebuild with `graphify extract . --code-only
+--force` (or `graphify update . --force`) so removed symbols drop out.
 
 ## Optional: serve over MCP/HTTP
 

@@ -40,8 +40,25 @@ structured results.
 - Shared, tool-agnostic skills: `skills/` (graphify, memory, plan-doc, code-review,
   red-team-review, activity-log).
 
+## Runtime requirements
+
+The `orch → patek → {lange,philipe,sohne,gerald}` chain relies on **nested
+subagents** (a subagent, Patek, spawning subagents). Behavior depends on the
+opencode version:
+
+- **opencode 1.16.x** (current here): no `subagent_depth` key exists; nesting is
+  unrestricted, so the chain works as-is.
+- **Newer opencode** (that ships `subagent_depth`, default **1**): add
+  `"subagent_depth": 2` to `opencode.json`, otherwise Patek's calls to the workers
+  are blocked and the team is decapitated.
+- **If a runtime forbids nested subagents entirely:** add the four workers to
+  `orch`'s `permission.task` allow-list so `orch` can drive the pipeline directly
+  (Patek then serves as planner/coordinator rather than sub-dispatcher).
+
+Verify nesting with one live dispatch before trusting a fleet run.
+
 ## Note on isolation
 
 opencode's Task subagents share the working directory, so parallel teams editing
 the *same* repo can collide. For parallel work on the same repo, prefer independent
-tasks, or extend later with per-task git worktrees if it becomes a real need.
+tasks (disjoint files), or add per-task git worktrees if it becomes a real need.
