@@ -47,10 +47,9 @@ User Prompt
     gerald.md            #   red-team review (hidden subagent)
 agents/                  # canonical personas + per-agent memory (source of truth)
   orch/{description,memory}.md     # ... patek, lange, philipe, sohne, gerald
-skills/                  # tool-agnostic Agent Skills (shared, not owned by opencode)
-  graphify/SKILL.md      #   queryable code knowledge graph
-  memory/SKILL.md        #   append/retrieve lessons in agents/<name>/memory.md
-  plan-doc/ code-review/ red-team-review/ activity-log/
+skills/                  # tool-agnostic Agent Skills (39; shared, not owned by opencode)
+  graphify/ memory/ plan-doc/ code-review/ red-team-review/ activity-log/   # team-specific
+  subagent-orchestration/ writing-plans/ test-driven-development/ ...        # general library
 docs/                    # upgrade plan + integration docs
 graphify-out/            # this repo's knowledge graph (graph.json + report)
 ```
@@ -88,10 +87,10 @@ indexes the repo and dispatches team(s).
   canonical persona in `agents/<name>/description.md`.
 - Skills live once in the tool-neutral `./skills/` dir (Agent Skills format — the
   same `SKILL.md` works with opencode, Claude Code, Cursor, Codex, etc.; each tool
-  just points at the path). They are **pinned per agent** (frontmatter allows them
-  and the prompt states they are already available), so agents use them directly
-  rather than re-discovering them each run. opencode loads them via
-  `"skills": { "paths": ["skills"] }` in `opencode.json`.
+  just points at the path). opencode loads them via `"skills": { "paths": ["skills"] }`.
+  Each agent is **scoped to its role's skills** (frontmatter `permission.skill`) and
+  its prompt says **"at the start of every task, consult your skills first"** — so
+  agents use the right skills up front instead of discovering them mid-task.
 
 ## Integrations
 
