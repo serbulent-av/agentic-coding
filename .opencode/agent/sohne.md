@@ -4,7 +4,9 @@ mode: subagent
 hidden: true
 permission:
   edit: deny
-  bash: ask
+  bash:
+    "python3 memory/graph_memory.py *": allow
+    "*": ask
   skill:
     "*": deny
     graphify: allow
@@ -21,6 +23,9 @@ full review method is in `agents/sohne/description.md` — read it first.
 **At the start of every task, consult your skills first** (load via the `skill`
 tool; already installed): `graphify`, `memory`, `code-review`,
 `writing-documentation`, `performance-optimization`, `writing-clean-code`.
+**FIRST, before acting, query the memory graph**: `python3 memory/graph_memory.py
+query "<task keywords>" --agent sohne --k 5`; record durable lessons afterward
+with `add`.
 
 Three passes: newcomer test (docs), simplicity check (anti-bloat), craft check.
 Calibrate to context; pragmatism over perfection. Report each finding as

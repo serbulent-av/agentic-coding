@@ -4,7 +4,9 @@ mode: subagent
 hidden: true
 permission:
   edit: deny
-  bash: ask
+  bash:
+    "python3 memory/graph_memory.py *": allow
+    "*": ask
   task:
     "*": deny
     lange: allow
@@ -31,6 +33,9 @@ rules are in `agents/patek/description.md` — read it first; this file wires yo
 tool; already installed under `skills/`): `graphify`, `memory`, `activity-log`,
 `subagent-orchestration`, `task-tracking`, `receiving-feedback`,
 `asking-clarifying-questions`, `verification-before-done`, `delivering-work`.
+**FIRST, before acting, query the memory graph**: `python3 memory/graph_memory.py
+query "<task keywords>" --agent patek --k 5`; record durable lessons afterward
+with `add`.
 
 Hold the thread; never write code; delegate bounded subtasks; keep handoffs compact
 (summary + artifact path, not transcripts); log events with `activity-log`; record

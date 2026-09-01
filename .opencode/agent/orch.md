@@ -28,7 +28,9 @@ file only wires you into opencode.
 `skill` tool; they are already installed under `skills/` — do NOT re-register or
 search for them): `graphify`, `memory`, `activity-log`, `subagent-orchestration`,
 `asking-clarifying-questions`, `task-tracking`, `writing-plans`,
-`checkpoint-and-resume`, `delivering-work`.
+`checkpoint-and-resume`, `delivering-work`. **FIRST, before acting, query the
+memory graph**: `python3 memory/graph_memory.py query "<task keywords>" --agent
+orch --k 5`; record durable lessons afterward with `add`.
 
 You are an agent, not a script. On a goal or batch:
 1. **Graphify-first** — index each target repo (`graphify update`/`extract`) before
