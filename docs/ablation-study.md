@@ -70,7 +70,27 @@ tokens/solve, wall-clock, review/escalation counts.
 ## Status
 
 Harness built + validated in `--mock` mode (agent emits correct minimal diffs; usage
-aggregates; budget counter works; resume skips completed runs). **Full 450-run sweep
-requires the SWE-bench dataset + per-instance checkouts** (on the GPU machine) — see
-"Run". Estimated token volume ≈ 450 × ~2–6k tok (loop) — well under budget on the
-Copilot route; the dominant cost driver is steps/instance, tuned via `--max-steps`.
+aggregates; budget counter works; resume skips completed runs).
+
+**Findings from the pilot (Kimi-K3 via Copilot, this box):**
+- The full real path works: dataset metadata (incl. `FAIL_TO_PASS`/`PASS_TO_PASS`),
+  per-instance `git worktree` checkout at `base_commit`, agent loop → candidate
+  patch, `preds-<arm>.jsonl` in official `model_patch` format.
+- Real cost is tiny on the Copilot subscription route: ~300–8k tokens/instance on
+  successes (≈ $0.005/instance) → a 450-run sweep would be ~$2–5, far under $100.
+- **Blocker to a clean sweep from this box:** the kimi-k3 Copilot route is *bursty*
+  — it intermittently returns HTTP 200 with empty content (both stream and
+  non-stream), cycling between healthy windows (12/12 good, ~358 tok) and all-empty
+  windows. Retries ride out healthy windows but burn tokens in bad ones. Also: the
+  official SWE-bench Docker images are per-instance and large, and the lightweight
+  per-repo test install is dependency-fragile (astropy needed `hypothesis`, version
+  pins, etc.) — use the official `swebench.harness.run_evaluation` for resolve rates.
+
+**Recommended execution:** run the sweep on the GPU machine (where `swebench` images
++ dataset + a healthy model route live), or point `--instances` at the subset and run
+during a healthy Kimi window. `eval_swebench.py` scores `out/preds-<arm>.jsonl`.
+
+**Full 450-run sweep requires the SWE-bench dataset + per-instance checkouts** (on
+the GPU machine) — see "Run". Estimated token volume ≈ 450 × ~2–6k tok (loop) — well
+under budget on the Copilot route; the dominant cost driver is steps/instance, tuned
+via `--max-steps`.

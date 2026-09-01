@@ -48,10 +48,11 @@ class Usage:
 
 
 def chat(messages, model="kimi-k3", temperature=0.0, max_tokens=4096,
-         usage=None, retries=5, stream=False, timeout=120):
+         usage=None, retries=25, stream=False, timeout=45, verbose=False):
     """Send a chat request; return text. Accumulates usage into `usage` if given.
 
-    Non-streaming by default (more reliable); set stream=True for long outputs.
+    Streaming by default: kimi-k3 on this route intermittently returns HTTP 200
+    with empty content on non-streaming calls; the streaming path is reliable.
     """
     import requests
     tok = _token()
@@ -84,6 +85,10 @@ def chat(messages, model="kimi-k3", temperature=0.0, max_tokens=4096,
                 if text:
                     return text
                 last = "empty body"
+                if verbose:
+                    print(f"  [kimi] empty completion (attempt {i+1}/{retries})", flush=True)
+                time.sleep(min(1.5 * (i + 1), 8))  # empty completion is transient; retry fast
+                continue
             else:
                 buf, parts, u = "", [], None
                 for chunk in r.iter_content(chunk_size=None, decode_unicode=True):
@@ -115,8 +120,10 @@ def chat(messages, model="kimi-k3", temperature=0.0, max_tokens=4096,
                 last = "empty stream"
         except Exception as e:
             last = repr(e)[:200]
-        time.sleep(3 * (i + 1))
-    raise RuntimeError(f"kimi chat failed: {last}")
+            if verbose:
+                print(f"  [kimi] exc (attempt {i+1}/{retries}): {last}", flush=True)
+        time.sleep(min(2 * (i + 1), 8))
+    raise RuntimeError(f"kimi chat failed after {retries} tries: {last}")
 
 
 def _strip_markers(text):
