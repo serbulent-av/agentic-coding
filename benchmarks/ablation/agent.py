@@ -27,13 +27,31 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BASH_RE = re.compile(r"```bash\s*\n(.*?)```", re.DOTALL)
 DIFF_RE = re.compile(r"```diff\s*\n(.*?)```", re.DOTALL)
 
+# NOTE: kimi-k3 (via Copilot) returns empty when the system prompt contains
+# heavy formatting language like "unified diff". Keep it short + plain; put the
+# format rules in the user turn instead.
 SYSTEM = (
-    "You are a software engineer fixing a bug in a repository. "
-    "Each turn, respond with EXACTLY ONE action: either a ```bash ...``` block "
-    "containing a single shell command to inspect/edit the repo, OR a final "
-    "```diff ...``` block containing a unified diff that fixes the issue. "
-    "Do not modify test files. Keep edits minimal."
+    "You are an expert software engineer fixing a bug in a repository. The repo is "
+    "your current working directory; use relative paths only, never search the wider "
+    "filesystem. Work step by step, then produce the fix."
 )
+
+FORMAT_RULES = (
+    "Rules for each reply: output EXACTLY ONE action. Either one ```bash``` code "
+    "block with a single shell command (run in the repo root) to inspect or edit "
+    "code, OR one ```diff``` code block with the final patch (git-style, a/ b/ "
+    "headers). Do not modify test files. Keep the change minimal."
+)
+
+# commands must stay inside the repo worktree
+_FORBIDDEN = re.compile(r"(^|[\s|;&])/(home|Users|etc|usr|var|opt|root|tmp|proc|sys|bin|sbin|lib|boot|dev)\b")
+
+
+def _safe(cmd: str) -> bool:
+    """Reject commands that reference absolute system paths outside the worktree."""
+    if _FORBIDDEN.search(cmd):
+        return False
+    return True
 
 
 @dataclass
@@ -58,7 +76,7 @@ class RunOutcome:
     usage: Usage = field(default_factory=Usage)
 
 
-def _run_bash(cmd: str, workdir: str, timeout: int = 60) -> str:
+def _run_bash(cmd: str, workdir: str, timeout: int = 30) -> str:
     try:
         p = subprocess.run(cmd, shell=True, cwd=workdir, capture_output=True,
                            text=True, timeout=timeout, executable="/bin/bash")
@@ -104,7 +122,8 @@ def _memory_context(instance_text: str, agent: str = "philipe") -> str:
 
 
 def _build_prompt(problem: str, arm: Arm, workdir: str) -> str:
-    parts = [f"Repository issue to fix:\n{problem}"]
+    parts = [f"{FORMAT_RULES}\n\nThe repository is checked out at your current "
+             f"working directory. Repository issue to fix:\n{problem}"]
     if arm.graphify:
         g = _graphify_context(problem, workdir)
         if g:
@@ -128,13 +147,18 @@ def _single_agent_loop(instance_id: str, problem: str, workdir: str, arm: Arm,
             return d.group(1).strip()
         b = BASH_RE.search(reply)
         if b:
-            out = _run_bash(b.group(1).strip(), workdir)
+            cmd = b.group(1).strip()
+            if not _safe(cmd):
+                out = ("ERROR: command references paths outside the repo. Stay in "
+                       "the current directory (relative paths only).")
+            else:
+                out = _run_bash(cmd, workdir)
             msgs.append({"role": "assistant", "content": reply})
             msgs.append({"role": "user", "content": f"Command output:\n{out}"})
         else:
             msgs.append({"role": "assistant", "content": reply})
             msgs.append({"role": "user", "content":
-                         "Respond with exactly one ```bash or ```diff block."})
+                         "Reply with exactly one ```bash``` or one ```diff``` block."})
     return ""
 
 

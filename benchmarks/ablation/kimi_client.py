@@ -48,7 +48,7 @@ class Usage:
 
 
 def chat(messages, model="kimi-k3", temperature=0.0, max_tokens=4096,
-         usage=None, retries=25, stream=False, timeout=45, verbose=False):
+         usage=None, retries=12, stream=False, timeout=45, verbose=False):
     """Send a chat request; return text. Accumulates usage into `usage` if given.
 
     Streaming by default: kimi-k3 on this route intermittently returns HTTP 200
