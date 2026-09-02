@@ -48,7 +48,13 @@ class Usage:
 
 
 def chat(messages, model="kimi-k3", temperature=0.0, max_tokens=4096,
-         usage=None, retries=12, stream=False, timeout=45, verbose=False):
+         usage=None, retries=12, stream=False, timeout=45, verbose=False,
+         max_wait_s=300):
+    """Send a chat request; return text. Accumulates usage into `usage` if given.
+
+    Non-streaming default. kimi-k3 on this route is bursty (intermittent empty
+    content); we retry fast, but give up after `max_wait_s` total so a single call
+    can't stall a run (an empty patch beats an 11-min hang)."""
     """Send a chat request; return text. Accumulates usage into `usage` if given.
 
     Streaming by default: kimi-k3 on this route intermittently returns HTTP 200
@@ -59,7 +65,10 @@ def chat(messages, model="kimi-k3", temperature=0.0, max_tokens=4096,
     body = {"model": model, "messages": messages, "temperature": temperature,
             "max_tokens": max_tokens, "stream": stream}
     last = None
+    t_start = time.time()
     for i in range(retries):
+        if time.time() - t_start > max_wait_s:
+            raise RuntimeError(f"kimi chat exceeded max_wait_s={max_wait_s}: {last}")
         try:
             r = requests.post(f"{API}/chat/completions",
                               headers={"Authorization": f"Bearer {tok}",

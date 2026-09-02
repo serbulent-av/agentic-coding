@@ -23,6 +23,8 @@ import materialize as mz  # noqa: E402
 OUT = os.path.join(HERE, "out")
 os.makedirs(OUT, exist_ok=True)
 
+# A4 = review loop applied to a single-agent base patch (review needs a patch to
+# review). A3 = team (plan->implement) without review.
 ARMS = [
     Arm(name="A0-baseline"),
     Arm(name="A1-graphify", graphify=True),

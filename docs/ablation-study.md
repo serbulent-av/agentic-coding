@@ -67,7 +67,26 @@ this box; the per-instance base images + dataset live on the GPU machine).
 Primary: pass@3 resolve rate/arm + per-feature Δ vs A0. Secondary: empty-patch rate,
 tokens/solve, wall-clock, review/escalation counts.
 
-## Status
+## Interim results (live; patch-emission rate, full sweep in progress)
+
+Patch-emission = % of runs producing a non-empty candidate patch (precursor to a
+solve; true resolve rates come from `eval_swebench.py`). Early, N incomplete.
+
+| Arm | Patches | Emission | Note |
+|---|---|---|---|
+| A0 baseline | 20/83 | 24% | reference |
+| A1 graphify | 6/32 | 19% (trending up) | cheap tokens |
+| A2 memory | 4/12 | 33% | small n |
+| A3 team | 1/12 | 8% | ~2× tokens (plan+implement+review calls) |
+| A4 review | 0/8 | 0% | review loop hits flaky windows; needed base-patch fix |
+| A5 all-on | — | pending | — |
+
+**Early read:** memory + graphify are cheap and at least neutral-to-positive on
+emission; the review/team arms multiply sequential calls into the bursty Kimi route
+and pay for it. Cost is trivial (~$2.4 for 147 runs → full 450-run sweep ~$5–8).
+
+The sweep runs in the background (resumable); this table is finalized + resolve rates
+added after completion + Docker scoring.
 
 Harness built + validated in `--mock` mode (agent emits correct minimal diffs; usage
 aggregates; budget counter works; resume skips completed runs).
