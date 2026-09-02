@@ -164,13 +164,52 @@ def _single_agent_loop(instance_id: str, problem: str, workdir: str, arm: Arm,
 
 def _team_loop(instance_id: str, problem: str, workdir: str, arm: Arm,
                usage: Usage, max_steps: int) -> str:
-    """T: Lange plans, Philipe implements (single-agent loop with the plan)."""
-    plan_prompt = ("Produce a minimal, concrete fix plan (files + steps) for this "
-                   "issue. No code, just the plan.\n\n" + problem)
-    plan = chat([{"role": "user", "content": plan_prompt}], usage=usage,
-                max_tokens=1024)
+    """T (real team, closer to orch->patek->workers):
+    1. Lange plans (concise).
+    2. Philipe implements the plan via the agentic loop.
+    3. Sohne + Gerald review the patch IN PARALLEL (two independent reviews).
+    4. Philipe revises on any critical findings (one consolidated round).
+    Returns the final patch. Falls back to the un-reviewed patch if review errors."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    # 1. plan
+    plan = chat([{"role": "user", "content":
+                  ("Produce a minimal, concrete fix plan (files + steps) for this "
+                   "issue. No code, just the plan.\n\n" + problem)}],
+                usage=usage, max_tokens=1024)
     planned = problem + "\n\nImplementation plan (follow it):\n" + plan
-    return _single_agent_loop(instance_id, planned, workdir, arm, usage, max_steps)
+
+    # 2. implement
+    patch = _single_agent_loop(instance_id, planned, workdir, arm, usage, max_steps)
+    if not patch or not patch.strip():
+        return patch
+
+    # 3. parallel reviewers (Sohne: quality/simplicity, Gerald: correctness/breaks)
+    def _review(persona):
+        q = ("quality, simplicity, and docs" if persona == "sohne"
+             else "correctness, edge cases, and bugs")
+        return chat([{"role": "user", "content":
+                      (f"Review this patch for {q}. Reply 'LGTM' if sound, else "
+                       f"list only CRITICAL/MAJOR issues concisely.\n\nIssue:\n{problem}"
+                       f"\n\nPatch:\n{patch}")}], usage=usage, max_tokens=1024)
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            sohne_r, gerald_r = list(ex.map(_review, ["sohne", "gerald"]))
+    except Exception:
+        return patch  # review infra failed -> keep base patch
+
+    findings = "\n".join(x for x in (sohne_r, gerald_r) if x and "lgtm" not in x.lower())
+    if not findings.strip():
+        return patch  # both signed off
+
+    # 4. one consolidated revision round
+    rev = chat([{"role": "user", "content":
+                 ("Revise the patch to address these review findings. Return ONLY the "
+                  f"final git-style diff.\n\nIssue:\n{problem}\n\nPatch:\n{patch}"
+                  f"\n\nFindings:\n{findings}")}], usage=usage, max_tokens=4096)
+    d = DIFF_RE.search(rev)
+    return d.group(1).strip() if d else patch
 
 
 def _review_loop(patch: str, problem: str, arm: Arm, usage: Usage) -> str:
