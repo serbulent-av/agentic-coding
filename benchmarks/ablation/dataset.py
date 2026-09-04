@@ -21,7 +21,7 @@ def load_instances(instance_ids, want_full=False):
     ds = load_dataset("princeton-nlp/SWE-bench_Verified", split="test", streaming=True)
     for r in ds:
         if r["instance_id"] in want:
-            out[r["instance_id"]] = {
+            rec = {
                 "instance_id": r["instance_id"],
                 "repo": r["repo"],
                 "base_commit": r["base_commit"],
@@ -29,6 +29,11 @@ def load_instances(instance_ids, want_full=False):
                 "FAIL_TO_PASS": json.loads(r["FAIL_TO_PASS"]) if isinstance(r.get("FAIL_TO_PASS"), str) else r.get("FAIL_TO_PASS", []),
                 "PASS_TO_PASS": json.loads(r["PASS_TO_PASS"]) if isinstance(r.get("PASS_TO_PASS"), str) else r.get("PASS_TO_PASS", []),
             }
+            # carry any extra fields the harness needs (e.g. image, version, env_setup)
+            for extra in ("image", "version", "environment_setup_commit", "created_at"):
+                if extra in r:
+                    rec[extra] = r[extra]
+            out[r["instance_id"]] = rec
             if len(out) == len(want):
                 break
     return out

@@ -67,26 +67,62 @@ this box; the per-instance base images + dataset live on the GPU machine).
 Primary: pass@3 resolve rate/arm + per-feature Δ vs A0. Secondary: empty-patch rate,
 tokens/solve, wall-clock, review/escalation counts.
 
-## Interim results (live; patch-emission rate, full sweep in progress)
+## Results (patch-emission rate, sweep COMPLETE)
 
-Patch-emission = % of runs producing a non-empty candidate patch (precursor to a
-solve; true resolve rates come from `eval_swebench.py`). Early, N incomplete.
+Patch-emission = % of runs producing a non-empty candidate patch (the precursor to a
+solve; true resolve rates require `eval_swebench.py` Docker scoring). N=25, pass@3.
+474 runs, **$5.63 total** (Copilot route; far under the $100 budget).
 
-| Arm | Patches | Emission | Note |
-|---|---|---|---|
-| A0 baseline | 20/83 | 24% | reference |
-| A1 graphify | 6/32 | 19% (trending up) | cheap tokens |
-| A2 memory | 4/12 | 33% | small n |
-| A3 team | 1/12 | 8% | ~2× tokens (plan+implement+review calls) |
-| A4 review | 0/8 | 0% | review loop hits flaky windows; needed base-patch fix |
-| A5 all-on | — | pending | — |
+| Arm | Patches | Emission | Errors | Tokens | Read |
+|---|---|---|---|---|---|
+| A0 baseline | 20/83 | **24%** | 15 | 3.75M | reference |
+| A1 graphify | 21/83 | **25%** | 8 | 3.92M | ≈ baseline, fewest errors |
+| A2 memory | 22/83 | **27%** | 15 | 4.01M | ≈ baseline, slight + |
+| A3 team | 9/75 | 12% | 28 | 3.76M | lower emission, more errors |
+| A4 review | 2/75 | 3% | 31 | 3.45M | heavy stalls |
+| A5 all-on | 1/75 | 1% | 38 | 3.69M | most calls → most stalls |
 
-**Early read:** memory + graphify are cheap and at least neutral-to-positive on
-emission; the review/team arms multiply sequential calls into the bursty Kimi route
-and pay for it. Cost is trivial (~$2.4 for 147 runs → full 450-run sweep ~$5–8).
+**Tokens are ~flat across arms** (the flaky-route retries dominate, not the feature
+calls), so the differentiator here is emission + error rate, not cost.
 
-The sweep runs in the background (resumable); this table is finalized + resolve rates
-added after completion + Docker scoring.
+### What A3 "team" is — and is not
+
+A3 is the *real* team arm: `Lange` plans → `Philipe` implements → **Sohne + Gerald
+review in parallel** → `Philipe` revises on CRITICAL/MAJOR findings. (An earlier
+2-call plan→implement strawman was discarded; its rows were quarantined to
+`results.jsonl.stale-a3a4`.) It is still a *flattened* team — the full nested
+orch→patek→workers team runs via opencode's Task tool, not this loop.
+
+### Why this does NOT conclude "teams aren't worth it"
+
+1. **Patch-emission ≠ resolve rate.** The team/reviewers exist to catch *wrong*
+   patches — so the team could emit fewer but *more-correct* patches and win on
+   **resolve rate** (patches passing hidden `FAIL_TO_PASS`). Emission is only a
+   leading proxy. The decisive metric needs Docker scoring (see blocker below).
+2. **Confound: the bursty Kimi route.** A3/A4/A5 make more sequential calls, so they
+   hit more of Kimi's empty-response windows → their high error counts (28/31/38) and
+   low emission are partly a *reliability* artifact of more calls, not purely a
+   *quality* verdict on teamwork. On a healthy route the gap could narrow or reverse.
+3. **Error rate is the tell.** A3/A4/A5's low emission tracks their high error rate
+   (calls dying in bad windows), reinforcing that this is route-driven, not a clean
+   measure of team value.
+
+### Bottom line
+
+- **Graphify + memory are safe and cheap** — emission ≈ baseline with the fewest
+  errors (graphify). Adopt them; they don't hurt and add retrieval/learning.
+- **Team/review are unproven, not disproven.** Their lower emission is confounded by
+  route flakiness and is a proxy metric. A fair verdict needs **resolve rates** on a
+  **healthy model route** (and ideally the true nested opencode team).
+
+### Blocker to true resolve rates (honest)
+
+`eval_swebench.py` uses `swebench.harness.run_evaluation`, which (v5.0.2) expects a
+richer instance schema (incl. an `image` field) than the HF `SWE-bench_Verified`
+dataset provides → it errors with `KeyError: 'image'` here. Resolve-rate scoring needs
+the full swebench image/eval environment (your GPU machine, where the prior benchmark
+runs already do this). Until then, patch-emission + error rate is the honest signal.
+
 
 Harness built + validated in `--mock` mode (agent emits correct minimal diffs; usage
 aggregates; budget counter works; resume skips completed runs).
