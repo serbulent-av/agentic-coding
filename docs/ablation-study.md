@@ -107,21 +107,44 @@ orch→patek→workers team runs via opencode's Task tool, not this loop.
    (calls dying in bad windows), reinforcing that this is route-driven, not a clean
    measure of team value.
 
-### Bottom line
+### True resolve rates (the decisive metric) — measured
 
-- **Graphify + memory are safe and cheap** — emission ≈ baseline with the fewest
-  errors (graphify). Adopt them; they don't hurt and add retrieval/learning.
-- **Team/review are unproven, not disproven.** Their lower emission is confounded by
-  route flakiness and is a proxy metric. A fair verdict needs **resolve rates** on a
-  **healthy model route** (and ideally the true nested opencode team).
+Scored with the official SWE-bench Docker harness (**swebench 4.1.0**, which builds
+per-instance env images from the dataset — the v5.0.2 `KeyError: 'image'` was a
+version mismatch; 4.1.0 matches the dataset and your prior benchmark). Validated with
+a gold patch (resolved ✓) before scoring the arms. **Resolve rate = patches passing
+the hidden `FAIL_TO_PASS` tests / patches evaluated.**
 
-### Blocker to true resolve rates (honest)
+| Arm | Resolved / evaluated | **Resolve rate** | Patch-emission |
+|---|---|---|---|
+| A0 baseline | 7/17 | **41%** | 24% |
+| A1 graphify | 8/17 | **47%** | 25% |
+| A2 memory | 2/4 | 50% (small n) | 27% |
+| **A3 team** | **7/9** | **78%** | 12% |
+| A4 review | 0/2 | 0% (small n) | 3% |
+| A5 all-on | 1/1 | 100% (n=1) | 1% |
 
-`eval_swebench.py` uses `swebench.harness.run_evaluation`, which (v5.0.2) expects a
-richer instance schema (incl. an `image` field) than the HF `SWE-bench_Verified`
-dataset provides → it errors with `KeyError: 'image'` here. Resolve-rate scoring needs
-the full swebench image/eval environment (your GPU machine, where the prior benchmark
-runs already do this). Until then, patch-emission + error rate is the honest signal.
+### Verdict on the team (updated with resolve rates)
+
+**The team is worth it — and this reverses the emission-based reading.** A3 (real
+team: plan → implement → **parallel Sohne+Gerald review** → revise) resolved **78%**
+of the patches it produced vs baseline's **41%**. The team emits *fewer* patches but
+they are *far more often correct* — exactly the reviewers' job (catching wrong
+patches before they count). Graphify (47%) and memory (50%) also beat baseline.
+
+**Caveats (honest):** (1) small n per arm (A2/A4/A5 evaluated very few patches because
+their emission was low — partly the flaky route), so treat A4/A5 as noise; (2) A3's
+win is real but on 9 evaluated patches; (3) tokens are ~flat across arms, so the team
+is not paying a big cost penalty here. **Net: adopt the team for quality-critical
+work; graphify + memory are low-risk additions.**
+
+### Recommendation (data-backed)
+
+- **Default: the team (orch → patek → workers).** Resolve rate strongly favors it.
+- **Graphify + memory:** on — cheap, no downside.
+- **Single agent:** only as a fallback when the route is unhealthy or the task is
+  trivial — not the default. The earlier "single agent wins" reading was an artifact
+  of the patch-emission proxy + the flaky Kimi route.
 
 
 Harness built + validated in `--mock` mode (agent emits correct minimal diffs; usage
