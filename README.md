@@ -1,135 +1,176 @@
-# Agentic Coding
+# Agentic Coding — Technical Report
 
-A multi-agent system for software development. Each agent has a specialized role, and together they form a complete workflow from planning through implementation to quality assurance.
+A self-hosted, multi-agent system for software development (and adjacent technical
+domains), built on **opencode**. A single orchestrator agent dispatches and supervises
+teams of role-specialized agents; a queryable **code knowledge graph** gives agents
+just-in-time retrieval; a **graph-based team memory** lets agents accumulate and
+recall lessons across runs; and an **ablation harness** measures what each feature
+actually contributes to benchmark success.
 
-## Agents
+> **Headline empirical result** (SWE-bench Verified, Kimi-K3, official Docker
+> scoring): the **team** resolves **78%** of the patches it produces vs **41%** for a
+> single agent — fewer but far-more-correct patches. Graphify (47%) and memory (50%)
+> also beat the single-agent baseline. Details in [§ Ablation](#ablation-evidence).
 
-| Agent | Role | Description |
-|-------|------|-------------|
-| **Orch** | Orchestrator / entry point | The top agent. Graphify-indexes the repo, splits the goal into bounded tasks, and dispatches one Patek team per task as parallel subagents, then supervises them. The only user-selectable primary. |
-| **Patek** | Team lead | Coordinates one team: delegates to the workers, keeps the thread, logs every handoff. Never writes code. |
-| **Lange** | Planning | Turns the ask into an executable plan — explicit scope, dependencies, testable acceptance criteria. |
-| **Philipe** | Implementation | Writes the code, step by step; the only role that edits. Iterates on review feedback. |
-| **Sohne** | Oversight | Reviews for quality, simplicity, and docs; hunts over-engineering as hard as sloppiness. |
-| **Gerald** | Red Team | Adversarial reviewer. Hunts bugs, edge cases, plan deviations, security. Won't sign off until critical issues are resolved. |
-| **Breguet** | Biophysics / Structural Biology | Domain expert for computational structural biology. Validates molecular-dynamics and free-energy work for scientific correctness, convergence, and reproducibility. Joins reviews for MD/FEP tasks. |
+---
 
-## Skills
-
-The team shares a `skills/` library of portable, Claude-Code-format Agent Skills
-(each a folder with a single `SKILL.md`). Each agent loads the skills relevant to
-its role on demand when a task matches a skill's trigger, rather than carrying
-every procedure inline. See [`skills/README.md`](skills/README.md) for the catalog
-and the per-agent skill mapping.
-
-## Workflow
+## 1. Architecture at a glance
 
 ```
-User Prompt
+User prompt
     |
     v
- [Orch] -- graphify-index repo, split into tasks, dispatch teams (parallel subagents)
-    |
-    v  (one team per task)
- [Patek] -- delegates to --> [Lange] (creates plan)
-    |
+ [Orch]  orchestrator (only selectable primary)
+    |    1. Graphify-index the repo (graphify-out/graph.json)
+    |    2. Query memory graph for prior lessons
+    |    3. Split goal into bounded tasks; dispatch one team per task (parallel subagents)
     v
- [Patek] -- delegates to --> [Philipe] (implements step by step)
+ [Patek] team lead (one per task)
+    |--> [Lange]   plan (scope, dependencies, acceptance criteria)
+    |--> [Philipe] implement (the only role that edits code)
+    |--> [Sohne]   oversight review  (quality / simplicity / docs)
+    |--> [Gerald]  red-team review   (correctness / bugs / security)
+    |--> [Breguet] domain review     (biophysics / MD / FEP, when relevant)
     |
-    v  (after each step)
- [Patek] -- triggers --> [Sohne] (oversight review)
- [Patek] -- triggers --> [Gerald] (red team review)
-    |
-    v  (if issues found)
- [Patek] -- routes feedback to --> [Philipe] (fixes)
-    |
-    v  (repeat until both sign off)
- [Patek] -- delivers result --> [Orch] -- supervises fleet, closes out
+    v  reviewers sign off, or feedback loops back to Philipe
+ [Orch]  supervise fleet, apply gates + cost-capped escalation, close out
 ```
 
-## Repository Structure
+All agents are wired as **opencode agents** (`.opencode/agent/*.md`) — thin wrappers
+over the canonical personas in `agents/<name>/description.md`. The orchestrator is an
+**agent, not a script**; the orchestration intelligence lives in the agents + skills.
+
+## 2. The team (agents)
+
+| Agent | Role | Mode | Edits? |
+|-------|------|------|--------|
+| **Orch** | Orchestrator / entry point — index, dispatch, supervise the fleet | primary (only selectable) | no |
+| **Patek** | Team lead — coordinates one team, owns the thread + activity log | hidden subagent | no |
+| **Lange** | Planner — executable plans with testable acceptance criteria | hidden subagent | no |
+| **Philipe** | Implementer — writes the code, iterates on review | hidden subagent | **yes** |
+| **Sohne** | Oversight — quality, simplicity (anti-over-engineering), docs | hidden subagent | no |
+| **Gerald** | Red team — bugs, edge cases, plan deviations, security | hidden subagent | no |
+| **Breguet** | Biophysics/structural-biology domain reviewer (MD/FEP validity) | hidden subagent | no |
+
+**Orchestrator-first guarantee:** `default_agent: orch`, built-in `build`/`plan`
+disabled, `patek` is a hidden subagent only `orch` may invoke
+(`permission.task: { "*": deny, patek: allow }`). Every prompt lands on the
+orchestrator; you can't bypass it by selecting a raw agent.
+
+## 3. Graphify — queryable code knowledge graph
+
+[Graphify](https://github.com/Graphify-Labs/graphify) maps the codebase (tree-sitter
+AST, local + deterministic, no LLM for code) into `graphify-out/graph.json`, so agents
+**query a scoped subgraph instead of grepping / reading whole files** — smaller,
+higher-signal context.
+
+- **Graphify-first:** `orch` indexes a repo before any team runs on it (on-demand).
+- Agents call `graphify query/path/explain` (bash-callable; also exposed as a skill
+  at `skills/graphify/`). See [docs/graphify.md](docs/graphify.md).
+- Every edge is tagged `EXTRACTED` vs `INFERRED`, so agents can tell fact from guess.
+
+## 4. Graph-based team memory
+
+A lightweight, **single-file, agent-anchored property graph** (`memory/graph.jsonl`)
+replaces flat per-agent logs. Nodes (`lesson | decision | pattern | gotcha`) hang off
+agent hubs via `knows`, and interlink via `applies_to | related_to | supersedes`. See
+[docs/memory-graph.md](docs/memory-graph.md).
+
+- **Committed source of truth:** `memory/graph.jsonl` (append-only text — git-diffable
+  and merge-friendly, unlike a binary DB).
+- **Query engine:** `memory/graph_memory.py` (stdlib) loads the JSONL into an
+  **in-memory SQLite** for top-K just-in-time recall (`query "<kw>" --agent X --k 5`)
+  — never a full dump, so recall stays context-lean. Appends are `fcntl`-locked +
+  `O_APPEND` (safe for parallel teams sharing a working dir). `supersede` is
+  append-a-marker (self-pruning; stale lessons drop out by default).
+- **Mirror:** `export` regenerates a human-readable `agents/<name>/memory.md` per
+  agent (generated, do-not-edit).
+- **Forced habit:** every agent's prompt requires querying memory *first* at task
+  start and recording durable lessons after.
+
+## 5. Skills (tool-agnostic)
+
+A shared `skills/` library of portable Agent Skills (one `SKILL.md` per folder) —
+works across opencode / Claude Code / Cursor / Codex. Each agent is **scoped to its
+role's skills** (`permission.skill`) and told to **consult skills at the start of
+every task**. Team-specific skills: `graphify`, `memory`, `plan-doc`, `code-review`,
+`red-team-review`, `activity-log`, plus a general library (testing, debugging,
+refactoring, CI/CD, security, MD/FEP, …). Catalog: [skills/README.md](skills/README.md).
+
+## 6. Ablation evidence
+
+Self-contained harness in `benchmarks/ablation/` (Kimi-K3 via Copilot API;
+mini-swe-agent-style loop; arm toggles; official SWE-bench Docker scoring). Full
+design + controls in [docs/ablation-study.md](docs/ablation-study.md).
+
+**Design:** 6 arms × N=25 × pass@3 (fractional factorial — baseline + each feature
+alone + all-on). **Cost: $5.63** (budget was $100).
+
+**Patch-emission** (proxy) vs **resolve rate** (decisive — patches passing hidden
+`FAIL_TO_PASS` tests, official Docker scoring):
+
+| Arm | Patch-emission | Resolve rate |
+|---|---|---|
+| A0 baseline (single agent) | 24% | **41%** |
+| A1 + graphify | 25% | **47%** |
+| A2 + memory | 27% | 50% (n=4) |
+| A3 **team** (plan→implement→parallel review→revise) | 12% | **78%** |
+| A4 review-only | 3% | 0% (n=2) |
+| A5 all-on | 1% | 100% (n=1) |
+
+**Takeaway:** the team emits *fewer* but *far more correct* patches (78% vs 41%)
+because reviewers catch wrong patches before they count. Patch-emission alone would
+have mis-led; resolve rate is the metric that matters. Graphify + memory beat baseline
+at no extra token cost. (Small n on A2/A4/A5 → treat as directional; A3's 78% is the
+robust signal.)
+
+**Consequence:** the team is the default for quality-critical work; single agent is a
+fallback for unhealthy model routes or trivial tasks.
+
+## 7. Benchmarks
+
+- [Local LLM Coding Benchmark](benchmarks/local-llm-coding-benchmark.md) — HumanEval+ /
+  MBPP+ pass@1, serving throughput, and agentic SWE-bench Verified results for
+  open-weight models on a single H100 (vLLM, EvalPlus, mini-swe-agent), with Opus
+  planner/reviewer orchestration experiments. Reproduction scripts + raw logs included.
+- [Ablation study](docs/ablation-study.md) — feature-effect measurement above.
+
+## 8. Repository structure
 
 ```
-.opencode/
-  agent/                 # runnable opencode agents (thin wrappers over the personas)
-    orch.md              #   orchestrator / dispatcher (primary) — starts runs
-    patek.md             #   team lead (hidden subagent) — coordinates one team
-    lange.md             #   planner (hidden subagent)
-    philipe.md           #   implementer (subagent) — the only role that edits
-    sohne.md             #   oversight review (hidden subagent)
-    gerald.md            #   red-team review (hidden subagent)
-    breguet.md           #   biophysics domain review (hidden subagent)
-agents/                  # canonical personas + per-agent memory (source of truth)
-  orch/{description,memory}.md     # ... patek, lange, philipe, sohne, gerald, breguet
-skills/                  # tool-agnostic Agent Skills (shared, not owned by opencode)
-  README.md              #   catalog + per-agent mapping
-  graphify/ memory/ plan-doc/ code-review/ red-team-review/ activity-log/  # team-specific
-  subagent-orchestration/ writing-plans/ test-driven-development/ ...       # general library
-tests/                   # skill-wiring guard (test_skills.py)
-docs/                    # integration docs (+ historical upgrade plan)
-graphify-out/            # this repo's knowledge graph (graph.json + report)
+.opencode/agent/      # runnable opencode agents (orch primary; 6 hidden subagents)
+agents/<name>/        # canonical personas (description.md) + memory mirror (memory.md)
+skills/               # tool-agnostic Agent Skills (+ README catalog)
+memory/               # graph.jsonl (source) + graph_memory.py (CLI)
+graphify-out/         # this repo's code knowledge graph (graph.json + report)
+benchmarks/           # local-LLM benchmark + ablation/ harness
+tests/                # skill-wiring + memory tests (no GPU needed)
+docs/                 # orchestrator, graphify, memory-graph, ablation-study, upgrade plan
 ```
 
-> The orchestrator is an **agent** (`orch`), not a script — there is no
-> `orchestrator/` code package. Orch dispatches teams as **parallel subagents** via
-> opencode's Task tool; the orchestration intelligence lives in the agents + skills.
+## 9. Quick start
 
-## How to Use
+```bash
+# open the repo in opencode — you start on `orch`, the orchestrator
+opencode
 
-**The orchestrator is always the top agent.** When you open this repo in opencode
-(or any Agent-Skills-compatible tool), `orch` is the only selectable primary:
-`default_agent: orch`, the built-in `build`/`plan` agents are disabled, and `patek`
-is demoted to a *hidden* subagent that only `orch` may invoke
-(`permission.task: { "*": deny, patek: allow }`). So you can't accidentally start in
-a raw agent and bypass the orchestrator — every prompt lands on `orch`, which
-indexes the repo and dispatches team(s).
+# headless: dispatch a batch of tasks (each gets a team, in an isolated worktree)
+#   -> orch indexes the repo, queries memory, then dispatches Patek teams as
+#      parallel subagents and supervises them to sign-off.
 
-1. **Start with the orchestrator (`orch`)**: give it a task (or a batch). It first
-   Graphify-indexes the repo, then **dispatches one Patek team per task as parallel
-   subagents** (via the Task tool) and supervises them to completion.
-2. **Patek leads each team**: coordinates and delegates; never writes code.
-3. **Lange plans** → **Philipe builds** → **Sohne + Gerald review** in parallel →
-   feedback loops to Philipe until both sign off. For computational structural
-   biology work, **Breguet** also reviews for scientific validity, convergence, and
-   reproducibility.
-4. **Gates + escalation** (deterministic, then cost-capped frontier) decide done/blocked.
-5. **Memory**: each agent appends durable lessons to its own `agents/<name>/memory.md`
-   (via the `memory` skill) and greps it back just-in-time.
+# query the code graph directly
+graphify query "how does orch dispatch teams?"
 
-## Agent & skill files
+# team memory
+python3 memory/graph_memory.py query "review flaky" --agent orch --k 5
+```
 
-- **Canonical personas + memory** live in `agents/<name>/` — `description.md` (the
-  full role instruction manual) and `memory.md` (that agent's running lesson log).
-- **Runnable opencode agents** live in `.opencode/agent/` — thin wrappers
-  (frontmatter: mode/permissions/model + a compact prompt) that point at the
-  canonical persona in `agents/<name>/description.md`.
-- Skills live once in the tool-neutral `./skills/` dir (Agent Skills format — the
-  same `SKILL.md` works with opencode, Claude Code, Cursor, Codex, etc.; each tool
-  just points at the path). opencode loads them via `"skills": { "paths": ["skills"] }`.
-  Each agent is **scoped to its role's skills** (frontmatter `permission.skill`) and
-  its prompt says **"at the start of every task, consult your skills first"** — so
-  agents use the right skills up front instead of discovering them mid-task.
+## 10. Testing
 
-## Integrations
+```bash
+python -m unittest discover -s tests    # 17 tests, no GPU required
+```
 
-This repo wires the team to two tools:
-
-- **Graphify** — a queryable knowledge graph of the codebase (`graphify-out/graph.json`)
-  so agents answer architecture questions by querying the graph instead of grepping.
-  See [docs/graphify.md](docs/graphify.md). Skill lives at `skills/graphify/`.
-- **Orchestrator** — an *agent* (`orch`), not a script. Templated on the Agent
-  Orchestrator's ideas (worktree isolation, derived status, durable facts) but the
-  reasoning is done by the model. **Graphify-first:** every repo is indexed before a
-  team runs on it; **active on dispatch:** `orch` spawns Patek teams as parallel
-  subagents via the Task tool and supervises them. See
-  [docs/orchestrator.md](docs/orchestrator.md).
-
-The six agents are wired as opencode agents under `.opencode/agent/` — thin wrappers
-over the canonical personas in `agents/<name>/description.md`. `orch` is the only
-selectable primary; Patek + the four workers are hidden subagents it invokes.
-Quick start: open the repo in opencode (starts on `orch`) and give it a task or a
-batch — it indexes, dispatches teams, and supervises.
-
-## Benchmarks
-
-- [Local LLM Coding Benchmark](benchmarks/local-llm-coding-benchmark.md) — HumanEval+ / MBPP+ pass@1 for open-weight coding models that fit on a single NVIDIA H100 80GB, served with vLLM and scored with EvalPlus. Includes the reproduction script (`benchmarks/run_bench.sh`) and raw run logs.
+Covers skill wiring (each agent's allowed skills exist + skills-first instruction),
+and the memory graph (add/link/query/supersede/export round-trip, top-K bounding,
+concurrent-append safety, git-diff-friendliness).
