@@ -7,11 +7,20 @@ A multi-agent system for software development. Each agent has a specialized role
 | Agent | Role | Description |
 |-------|------|-------------|
 | **Orch** | Orchestrator / entry point | The top agent. Graphify-indexes the repo, splits the goal into bounded tasks, and dispatches one Patek team per task as parallel subagents, then supervises them. The only user-selectable primary. |
-| **Patek** | Team lead | Coordinates one team: delegates to Lange/Philipe/Sohne/Gerald, keeps the thread, logs every handoff. Never writes code. |
+| **Patek** | Team lead | Coordinates one team: delegates to the workers, keeps the thread, logs every handoff. Never writes code. |
 | **Lange** | Planning | Turns the ask into an executable plan — explicit scope, dependencies, testable acceptance criteria. |
 | **Philipe** | Implementation | Writes the code, step by step; the only role that edits. Iterates on review feedback. |
 | **Sohne** | Oversight | Reviews for quality, simplicity, and docs; hunts over-engineering as hard as sloppiness. |
 | **Gerald** | Red Team | Adversarial reviewer. Hunts bugs, edge cases, plan deviations, security. Won't sign off until critical issues are resolved. |
+| **Breguet** | Biophysics / Structural Biology | Domain expert for computational structural biology. Validates molecular-dynamics and free-energy work for scientific correctness, convergence, and reproducibility. Joins reviews for MD/FEP tasks. |
+
+## Skills
+
+The team shares a `skills/` library of portable, Claude-Code-format Agent Skills
+(each a folder with a single `SKILL.md`). Each agent loads the skills relevant to
+its role on demand when a task matches a skill's trigger, rather than carrying
+every procedure inline. See [`skills/README.md`](skills/README.md) for the catalog
+and the per-agent skill mapping.
 
 ## Workflow
 
@@ -49,11 +58,13 @@ User Prompt
     philipe.md           #   implementer (subagent) — the only role that edits
     sohne.md             #   oversight review (hidden subagent)
     gerald.md            #   red-team review (hidden subagent)
+    breguet.md           #   biophysics domain review (hidden subagent)
 agents/                  # canonical personas + per-agent memory (source of truth)
-  orch/{description,memory}.md     # ... patek, lange, philipe, sohne, gerald
-skills/                  # tool-agnostic Agent Skills (39; shared, not owned by opencode)
-  graphify/ memory/ plan-doc/ code-review/ red-team-review/ activity-log/   # team-specific
-  subagent-orchestration/ writing-plans/ test-driven-development/ ...        # general library
+  orch/{description,memory}.md     # ... patek, lange, philipe, sohne, gerald, breguet
+skills/                  # tool-agnostic Agent Skills (shared, not owned by opencode)
+  README.md              #   catalog + per-agent mapping
+  graphify/ memory/ plan-doc/ code-review/ red-team-review/ activity-log/  # team-specific
+  subagent-orchestration/ writing-plans/ test-driven-development/ ...       # general library
 tests/                   # skill-wiring guard (test_skills.py)
 docs/                    # integration docs (+ historical upgrade plan)
 graphify-out/            # this repo's knowledge graph (graph.json + report)
@@ -78,7 +89,9 @@ indexes the repo and dispatches team(s).
    subagents** (via the Task tool) and supervises them to completion.
 2. **Patek leads each team**: coordinates and delegates; never writes code.
 3. **Lange plans** → **Philipe builds** → **Sohne + Gerald review** in parallel →
-   feedback loops to Philipe until both sign off.
+   feedback loops to Philipe until both sign off. For computational structural
+   biology work, **Breguet** also reviews for scientific validity, convergence, and
+   reproducibility.
 4. **Gates + escalation** (deterministic, then cost-capped frontier) decide done/blocked.
 5. **Memory**: each agent appends durable lessons to its own `agents/<name>/memory.md`
    (via the `memory` skill) and greps it back just-in-time.

@@ -2,30 +2,4 @@
 
 # Gerald - Memory
 
-## Lessons
-
-- `lesson:gerald:1d883647` lesson worth exporting about hooks
-- `lesson:gerald:3aa2fe09` warmup seed lesson
-- `lesson:gerald:52f678fa` adversarial $HOME `whoami` && rm -rf /; "double" 'single' <>&|*? {}[] \ backslash
-second line with	tab and 100% plus #hash --agent forged
-- `lesson:gerald:7345155d` lesson about retrying flaky hooks zxqwlesson001
-- `lesson:gerald:786831ab` merge friendly lesson number 1
-- `lesson:gerald:9752cd7f` merge friendly lesson number 0
-- `lesson:gerald:ac464c8c` merge friendly lesson number 2
-- `lesson:gerald:228ab5ec` lesson kwtopicbound-tok-06 about kwtopicbound
-- `lesson:gerald:60acc756` lesson kwtopicbound-tok-04 about kwtopicbound
-- `lesson:gerald:6639c44b` lesson kwtopicbound-tok-03 about kwtopicbound
-- `lesson:gerald:94579c7b` lesson kwtopicbound-tok-07 about kwtopicbound
-- `lesson:gerald:9891346e` lesson kwtopicbound-tok-02 about kwtopicbound
-- `lesson:gerald:dad2ab2a` lesson kwtopicbound-tok-01 about kwtopicbound
-- `lesson:gerald:e4404999` lesson kwtopicbound-tok-00 about kwtopicbound
-- `lesson:gerald:f3131fa1` lesson kwtopicbound-tok-05 about kwtopicbound
-- `lesson:gerald:f706e3c2` outdated lesson stalelessonold001 use the old flag
-- `lesson:gerald:655231e0` merge friendly lesson number 0
-- `lesson:gerald:7fb44822` merge friendly lesson number 1
-- `lesson:gerald:8e3ae333` warmup seed lesson
-- `lesson:gerald:b6772764` lesson about retrying flaky hooks zxqwlesson001
-- `lesson:gerald:befe1b1a` lesson worth exporting about hooks
-- `lesson:gerald:e0de98c9` adversarial $HOME `whoami` && rm -rf /; "double" 'single' <>&|*? {}[] \ backslash
-second line with	tab and 100% plus #hash --agent forged
-- `lesson:gerald:e14c6290` merge friendly lesson number 2
+_No memories recorded yet._

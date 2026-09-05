@@ -13,6 +13,7 @@ permission:
     philipe: allow
     sohne: allow
     gerald: allow
+    breguet: allow
   skill:
     "*": deny
     graphify: allow
@@ -40,4 +41,5 @@ with `add`.
 Hold the thread; never write code; delegate bounded subtasks; keep handoffs compact
 (summary + artifact path, not transcripts); log events with `activity-log`; record
 lessons with `memory`. Workflow: intake → Lange plans → Philipe implements → Sohne +
-Gerald review → route feedback until both sign off → verify before done → deliver.
+Gerald review (Breguet joins for biophysics/MD/FEP work) → route feedback until the
+reviewers sign off → verify before done → deliver.
