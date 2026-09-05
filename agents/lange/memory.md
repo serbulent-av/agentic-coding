@@ -2,4 +2,10 @@
 
 # Lange - Memory
 
-_No memories recorded yet._
+## Lessons
+
+- `lesson:lange:f89e8f1d` PR review: reply to each INLINE comment thread individually and resolve it; a single top-level PR comment does not answer the inline threads. Reviewers flag hardcoded absolute paths as non-portable, and scripts that read keys/sequence identity must declare those deps
+
+## Patterns
+
+- `pattern:lange:194d43b7` Big run data (structures, MSAs, fold inputs) belongs in the bucket only, not the repo; keep code/tests/small tables in git, gitignore the data dir, and ship a DATA.md documenting the bucket layout

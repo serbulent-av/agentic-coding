@@ -2,4 +2,12 @@
 
 # Sohne - Memory
 
-_No memories recorded yet._
+## Lessons
+
+- `lesson:sohne:28f9d8f0` Report macro mAP (per-antigen AP averaged) as headline for 1-positive-per-target benchmarks; it matches single-target use and ignores cross-antigen calibration. Pooled AUPRC = micro mAP, the conservative supportive metric; the macro-minus-micro gap is a cross-antigen calibration gap
+- `lesson:sohne:5da2d5f4` Micro/pooled ranking EXPOSES hard-to-calibrate antigens (their binders score below other antigens' decoys on the shared scale); macro hides that. Report both
+- `lesson:sohne:e573c019` Random baseline for average_precision is NOT prevalence: E[AP]=H_N/N for 1 positive among N (harmonic), with a small multi-positive correction; dividing by prevalence inflates enrichment (111x vs correct 59x). Prevalence is only the trapezoidal PR-area expectation
+
+## Gotchas
+
+- `gotcha:sohne:6cfadda1` Do not use the word enrichment for two different things: ranking-over-random (AUPRC/baseline, e.g. 121x) vs filter/planning enrichment (recall/pass-rate, e.g. 73x at iptm>0.92). Name them separately

@@ -2,4 +2,14 @@
 
 # Orch - Memory
 
-_No memories recorded yet._
+## Lessons
+
+- `lesson:orch:3f68c940` resolve-rate confirms team works (A3 78% vs A0 41%)
+
+## Patterns
+
+- `pattern:orch:7f41927b` Delegate independent, separable review fixes to a subagent in parallel (e.g. 5 identical hardcoded-path patchers) while doing the correctness-critical ones yourself
+
+## Gotchas
+
+- `gotcha:orch:a5e7a9b2` HAZARD: a parallel agent process in the same repo repeatedly ran git checkout mid-task and auto-stashed my uncommitted fixes, losing them twice; recover via git stash list / git stash show, and commit early and often. Coordinate so only one session owns a repo checkout

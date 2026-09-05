@@ -2,4 +2,8 @@
 
 # Gerald - Memory
 
-_No memories recorded yet._
+## Lessons
+
+- `lesson:gerald:aeb3636b` Epitope-contact gate is NOT an independent filter: it is read off the same predicted structure as iptm, so a confidently wrong fold gives a wrong epitope that still passes; it also needs a known target epitope, which a novel antigen lacks. Do not present it as a precision multiplier
+- `lesson:gerald:bb31f43d` Verify the direction of a suspected leak, not just presence: pre-cutoff decoys scored the SAME as post-cutoff (KS p>=0.35), so no training-familiarity effect; the wet-lab numbers were unchanged
+- `lesson:gerald:d5cccae9` Verify post-cutoff / leak claims with real data, not prose: pull PDB release dates and check. Here all 10 positives were post-cutoff but the 933 decoys were mixed (44% pre-2021-09-30)

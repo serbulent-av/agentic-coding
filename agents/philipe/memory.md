@@ -2,4 +2,16 @@
 
 # Philipe - Memory
 
-_No memories recorded yet._
+## Lessons
+
+- `lesson:philipe:0721b03a` Epitope/contact recall: index frames diverge when the supplied antigen sequence differs from the parsed chain (truncated/offset crystal); remap parsed-chain indices onto the supplied sequence via a SEMI-GLOBAL aligner (free end-gaps), never a local aligner which pulls a truncation to index 1
+- `lesson:philipe:5f8a16fb` Match the metrics script to the report: aggregate_results.py used a prevalence random-AP baseline (111x) while the report used the harmonic baseline (59x); fix the source, not just the output JSON
+
+## Patterns
+
+- `pattern:philipe:a77f1be8` Benchmark dataset root: never Path(__file__).parent.parent (breaks on move); resolve via env-var override plus an upward walk for a marker file (manifest.csv), else raise
+
+## Gotchas
+
+- `gotcha:philipe:0f3c4e50` Biopython PairwiseAligner: for free end gaps use mode=global + end_gap_score=0; the older target_end_gap_score/query_end_gap_score are deprecated and break the mapping
+- `gotcha:philipe:12ab1879` Never resolve a chain by length when VHH and antigen lengths are close (sys089 120 vs 124 mislabeled the antigen); resolve by sequence identity
