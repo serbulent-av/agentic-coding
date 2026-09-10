@@ -54,9 +54,20 @@ A shared, portable library of Claude-Code-format skills — each a folder with a
 | [`task-tracking`](task-tracking/SKILL.md) | Use when work spans three or more steps or multiple sessions; track it as discrete tasks with explicit status. |
 | [`checkpoint-and-resume`](checkpoint-and-resume/SKILL.md) | Use when work risks exceeding a single session or context window; persist state so it survives interruption. |
 | [`asking-clarifying-questions`](asking-clarifying-questions/SKILL.md) | Use when you need a decision, clarification, or approval from the user, and to decide when to instead proceed autonomously. |
-| [`persistent-memory`](persistent-memory/SKILL.md) | Use at the start or end of a session, or when a durable lesson emerges, to maintain memory across sessions. |
+| [`persistent-memory`](persistent-memory/SKILL.md) | Policy for what/when to persist across sessions; the mechanism is the `memory` graph skill. |
 | [`delivering-work`](delivering-work/SKILL.md) | Use when implementation is complete and verified and the work needs to be integrated or handed back. |
 | [`skill-creator`](skill-creator/SKILL.md) | Use when scaffolding a new skill or revising an existing one for this library. |
+
+### Team Memory & Graph
+
+| Skill | When to use |
+|-------|-------------|
+| [`memory`](memory/SKILL.md) | The shared team memory graph — record/recall lessons, patterns, gotchas, decisions. Source of truth: `memory/graph.jsonl`. |
+| [`persistent-memory`](persistent-memory/SKILL.md) | Policy for what is worth persisting; routes through the `memory` graph. |
+| [`graphify`](graphify/SKILL.md) | Query the repo's code knowledge graph instead of grepping whole files. |
+| [`plan-doc`](plan-doc/SKILL.md) | Write an executable plan doc for a task. |
+| [`activity-log`](activity-log/SKILL.md) | Log run events/handoffs for the team. |
+| [`red-team-review`](red-team-review/SKILL.md) | Adversarial review for bugs, edge cases, security. |
 
 ### Tools & Domains
 
@@ -71,6 +82,7 @@ A shared, portable library of Claude-Code-format skills — each a folder with a
 | [`rest-api-development`](rest-api-development/SKILL.md) | Use when building or reviewing REST/HTTP APIs. |
 | [`react-frontend`](react-frontend/SKILL.md) | Use when building or reviewing React or similar component-based UI. |
 | [`observability-logging`](observability-logging/SKILL.md) | Use when adding logging, metrics, or tracing to code or services. |
+| [`dws-kueue-jobs`](dws-kueue-jobs/SKILL.md) | Use when submitting or reviewing batch Jobs that need on-demand GPU/TPU capacity via Kueue and a dynamic provisioning scheduler (e.g. GKE Dynamic Workload Scheduler). |
 
 ### Computational Structural Biology
 
@@ -80,7 +92,7 @@ A shared, portable library of Claude-Code-format skills — each a folder with a
 | [`enhanced-sampling-free-energy`](enhanced-sampling-free-energy/SKILL.md) | Use when computing binding or conformational free energies, or accelerating sampling beyond plain MD (FEP, TI, umbrella sampling, metadynamics, GaMD, MM/PBSA). |
 | [`md-trajectory-analysis`](md-trajectory-analysis/SKILL.md) | Use when analyzing molecular dynamics trajectories — RMSD/RMSF, clustering, contacts, hydrogen bonds, or convergence (MDAnalysis or GROMACS tools). |
 
-_35 skills total: Planning & Design (3), Implementation (6), Review & QA (6), Security (1), Orchestration & Workflow (7), Tools & Domains (9), Computational Structural Biology (3)._
+_36 skills total: Planning & Design (3), Implementation (6), Review & QA (6), Security (1), Orchestration & Workflow (7), Tools & Domains (10), Computational Structural Biology (3)._
 
 ## Which agents use what
 
@@ -88,7 +100,7 @@ Each agent's `description.md` lists its core skills below. Any agent may load an
 
 | Agent | Role | Core skills |
 |-------|------|-------------|
-| **Patek** | Orchestrator | subagent-orchestration, executing-plans, task-tracking, asking-clarifying-questions, checkpoint-and-resume, persistent-memory, delivering-work, verification-before-done, using-git-worktrees, skill-creator |
+| **Patek** | Orchestrator | subagent-orchestration, executing-plans, task-tracking, asking-clarifying-questions, checkpoint-and-resume, memory, persistent-memory, activity-log, delivering-work, verification-before-done, using-git-worktrees, skill-creator |
 | **Lange** | Planning | brainstorming, writing-plans, api-design, asking-clarifying-questions, skill-creator |
 | **Philipe** | Implementation | test-driven-development, writing-clean-code, systematic-debugging, refactoring, receiving-feedback, executing-plans, verification-before-done |
 | **Sohne** | Oversight | code-review, verification-before-done, writing-clean-code, refactoring, writing-documentation |
