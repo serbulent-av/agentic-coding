@@ -174,3 +174,46 @@ python -m unittest discover -s tests    # 17 tests, no GPU required
 Covers skill wiring (each agent's allowed skills exist + skills-first instruction),
 and the memory graph (add/link/query/supersede/export round-trip, top-K bounding,
 concurrent-append safety, git-diff-friendliness).
+
+## 11. pi (pi.dev)
+
+The same team also ships as a **pi package** (see `package.json` → `pi.subagents`).
+
+```bash
+# install from git
+pi install git:github.com/serbulent-av/agentic-coding
+
+# or from a local checkout (development)
+pi install /path/to/agentic-coding
+```
+
+**Files under `pi/` are copies** of the live config in `~/.pi/agent/` — edit both
+sides (or re-sync) when changing either.
+
+**Name shadowing:** the 7 agent names register unprefixed; project `.pi/agents/*.md`
+and global `~/.pi/agent/agents/*.md` files of the same name shadow the package
+copies (precedence per pi-subagents docs).
+
+**What you get:** the 7 pi agents from `pi/agents/` (patek, orch, lange, philipe,
+sohne, gerald, breguet) and the `team-pipeline` saved workflow from
+`pi/workflows/`.
+
+**Shell-less conductors, by design:** `patek` and `orch` have **no `bash` tool** —
+they are delegate-or-nothing conductors. Memory and activity-log duties live with
+the dispatcher, per `pi/AGENTS.md`.
+
+**Workflow usage:**
+
+```js
+SubagentWorkflow({ name: "team-pipeline", args: { task, files, verify } })
+```
+
+A deterministic pipeline: plan → implement (gated by the `verify` command) →
+parallel sohne + gerald schema reviews → up to 2 fix rounds.
+
+**Sandbox test harness:** a dockerized end-to-end harness lives in
+`pi/tests/sandbox/` — see `pi/tests/sandbox/README.md` for `setup-sandbox.sh`,
+`run-test.sh`, and `run-docker-test.sh` (docker + `PI_CODING_AGENT_DIR`).
+
+**Dispatcher settings:** `pi/subagents.json` ships reference settings
+(`maxSubagentDepth: 3`, `viewerMarkdown: "all"`).
