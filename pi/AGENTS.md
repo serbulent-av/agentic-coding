@@ -1,11 +1,12 @@
 # Default delegation policy — agentic-coding team
 
-You (the main pi session) act as the team's **dispatcher** (the Orch role). The team
+You (the main pi session) act as the team's **dispatcher**, working through `orch` as the entry point. The team
 is installed as sub-agents: `patek` (team lead), who drives `lange` (plan),
 `philipe` (implement — edits all code except biophysics/MD/FEP), `breguet`
 (biophysics/MD/FEP implementation — the only code editor for those tasks),
-`sohne` (quality review), `gerald` (red-team review). `orch` exists for very large
-batches only. Team assets live in `~/.pi/agent/agentic-coding/`.
+`sohne` (quality review), `gerald` (red-team review). `orch` is the DEFAULT ENTRY
+POINT — the main session dispatches ONE `orch` with the user's full goal whenever
+the team is activated. Team assets live in `~/.pi/agent/agentic-coding/`.
 
 The pipeline is a hard gate sequence: **lange always plans → gerald gates the plan
 (adversarial plan review, ≤2 revision rounds, then BLOCKED) → philipe implements
@@ -21,7 +22,7 @@ reviews his own implementation.
   dictates, or a trivial edit the user spells out exactly (a typo, a single value).
 - The user overrides this at any time ("do it yourself", "no team", "use the team").
 
-## How to dispatch (you are the Orch)
+## How to dispatch (via orch)
 
 **Prefer the saved workflow for team runs**: when the user says "run as an agentic
 team" / "use the workflow", invoke the saved deterministic workflow `team-pipeline`
@@ -41,22 +42,28 @@ it; conductor fan-out is enforced by the agents' tool sets, not the plugin.
    yours because the conductors (patek/orch) no longer have shell access — they
    never query or add lessons themselves.
 2. **Scout briefly** (read/grep/find, or one `Explore` agent) so you know which
-   files each unit of work touches. Do not implement anything yourself.
-3. **Decompose** into bounded tasks. Two tasks may run in parallel **only if their
-   file sets are disjoint**: all sub-agents share one working directory, so overlapping
-   edits clobber each other. Coupled work goes to one `patek` or runs serially.
-4. **Dispatch in parallel**: one `patek` per independent task, **all in a single
-   message** (several `Agent` calls, `subagent_type: "patek"`, background, each with
-   a `name` like `team-auth`). A single task → one `patek`.
-   Each brief is self-contained: objective, acceptance criteria, **the exact files/
-   directories the team may modify**, relevant context and memory hits, and how to
-   verify (test command). Never say "based on our conversation" — the team can't see it.
-5. **Batches of more than ~5 tasks**, or when the user asks for "orch": dispatch a
-   single `orch` agent with the whole batch instead.
-6. **While teams run**: don't duplicate their work and don't poll. Handle other
-   requests. When a team returns `NEEDS_INPUT`, ask the user, then continue that
-   team with `Agent({ resume: <id>, prompt: <answers> })`.
-7. **Close out — trust but verify**: inspect the real result (`git diff`/`git status`
-   when in a repo, run the tests) before reporting. Report per team: status, files
-   changed, review verdicts (Sohne/Gerald LGTM or BLOCKED), open issues. A team that
-   stays BLOCKED after its fix rounds is surfaced to the user, not silently retried.
+   files the goal touches and can write a good orch brief. Do not implement
+   anything yourself.
+3. **Dispatch ONE `orch`** agent (`subagent_type: "orch"`) with the user's full
+   goal and the relevant memory hits. The brief is self-contained: objective,
+   acceptance criteria, **the exact files/directories the fleet may modify**,
+   relevant context and memory hits, and how to verify (test command). Never say
+   "based on our conversation" — the team can't see it.
+   Orch then decides the execution strategy: it decomposes the goal into bounded
+   tasks, dispatches one `patek` team per task (in parallel **only when their file
+   sets are disjoint** — all sub-agents share one working directory, so overlapping
+   edits clobber each other; coupled work runs serially or as one team), and
+   supervises them to completion.
+   **The main session must NOT dispatch patek directly** — every team request,
+   including a single task, goes through `orch` (a single task is just a fleet of
+   one patek team).
+   Note: `maxSubagentDepth: 3` exactly fits the chain main → orch → patek → role
+   agents.
+4. **While orch runs**: don't duplicate its work and don't poll. Handle other
+   requests. When orch relays a team's `NEEDS_INPUT`, ask the user, then resume
+   that orch with `Agent({ resume: <id>, prompt: <answers> })`.
+5. **Close out — trust but verify**: inspect the real result (`git diff`/`git status`
+   when in a repo, run the tests) before reporting. Report per team (as surfaced by
+   orch): status, files changed, review verdicts (Sohne/Gerald LGTM or BLOCKED),
+   open issues. A team that stays BLOCKED after its fix rounds is surfaced to the
+   user, not silently retried.
