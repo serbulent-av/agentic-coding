@@ -283,7 +283,11 @@ while (!noVerdicts && open.length > 0 && rounds < 2) {
     reviews = prevReviews;
     break;
   }
-  open = openFindings(reviews);
+  // A reviewer that returned null this round cannot clear its own earlier
+  // findings — carry them forward, or a dropped verdict reads as approval.
+  const carried = prevOpen.filter(f => !(f.reviewer in reviews));
+  if (carried.length > 0) log('Carried forward ' + carried.length + ' finding(s) from failed reviewer(s)');
+  open = openFindings(reviews).concat(carried);
 }
 
 const blockers = open.filter(f => f.severity === 'CRITICAL' || f.severity === 'MAJOR');
