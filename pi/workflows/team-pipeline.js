@@ -80,6 +80,7 @@ function planGateBlocked(findings, planSummary) {
     openFindings: findings,
     gateOk: false,
     planGate: 'REJECTED',
+    planGateRound: null,
   };
 }
 
@@ -94,6 +95,7 @@ function noPlanBlocked() {
     openFindings: [{ reviewer: '(pipeline)', severity: 'MAJOR', title: 'No plan produced', detail: 'lange returned null for every planning attempt' }],
     gateOk: false,
     planGate: 'NO_PLAN',
+    planGateRound: null,
   };
 }
 
@@ -129,12 +131,16 @@ const planGateLens =
   (args.bio
     ? ' This is biophysics/MD/FEP work — also scrutinize the scientific claims and protocol: force field/water model choice, ensembles, equilibration, sampling, convergence and error reporting, reproducibility.'
     : '');
+// Shared blocking-finding predicate — used by BOTH the plan gate and the
+// code-review openFindings(), so an APPROVE verdict carrying CRITICAL/MAJOR
+// findings is treated as open at both gates.
 function hasBlockingFindings(verdict) {
   return Boolean(verdict && Array.isArray(verdict.findings) &&
     verdict.findings.some(f => f.severity === 'CRITICAL' || f.severity === 'MAJOR'));
 }
 
 let gateVerdict = null;
+let approvedGateRound = null;
 if (planSummary === null) {
   return noPlanBlocked();
 }
@@ -147,7 +153,8 @@ for (let gateRound = 0; gateRound <= 2; gateRound++) {
     { label: 'gate-r' + (gateRound + 1), agentType: 'gerald', schema: VERDICT_SCHEMA }
   );
   if (gateVerdict !== null && gateVerdict.verdict === 'APPROVE' && !hasBlockingFindings(gateVerdict)) {
-    log('Plan gate APPROVED on round ' + (gateRound + 1));
+    approvedGateRound = gateRound + 1;
+    log('Plan gate APPROVED on round ' + approvedGateRound);
     break;
   }
   if (gateRound === 2) {
@@ -234,7 +241,7 @@ function openFindings(reviews) {
   const open = [];
   for (const name of Object.keys(reviews)) {
     const r = reviews[name];
-    if (r && r.verdict === 'REQUEST_CHANGES' && Array.isArray(r.findings)) {
+    if (r && (r.verdict === 'REQUEST_CHANGES' || hasBlockingFindings(r)) && Array.isArray(r.findings)) {
       for (const f of r.findings) open.push({ reviewer: name, severity: f.severity, title: f.title, detail: f.detail });
     }
   }
@@ -292,4 +299,5 @@ return {
   openFindings: open,
   gateOk,
   planGate: 'APPROVED',
+  planGateRound: approvedGateRound,
 };

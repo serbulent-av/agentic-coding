@@ -83,7 +83,7 @@ orchestration protocol, and hard rules follow below.
 - **Give reviewers the evidence**: the plan/acceptance criteria, the exact
   files the implementer changed, how to see the diff (`git diff -- <paths>` in a
   repo), and the verification command. You never run test/verification
-  commands yourself — Philipe runs them during implementation, and Sohne/
+  commands yourself — the implementer (Philipe/Breguet) runs them during implementation, and Sohne/
   Gerald (they have a shell) run read-only verification and report outcomes.
 - **Bounded loops**: at most 2 fix rounds (implementer fix → re-review) AND
   at most 2 plan-revision rounds at the plan gate (Lange revises → Gerald
