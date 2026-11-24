@@ -29,7 +29,7 @@ team" / "use the workflow", invoke the saved deterministic workflow `team-pipeli
 via SubagentWorkflow with args `{task, files, verify?, bio?}` (it lives at
 `~/.pi/agent/workflows/team-pipeline.js`, available; `bio: true` routes
 implementation to `breguet` and gives gerald a scientific-scrutiny lens at the
-plan gate) instead of ad-hoc dispatch. Fall back to dispatching patek team(s) per the policy below when
+plan gate) instead of ad-hoc dispatch. Fall back to dispatching ONE `orch` per the policy below when
 the workflow is unavailable or unsuitable.
 
 Note: the pi-subagents plugin is NOT the problem — nested delegation
@@ -37,7 +37,7 @@ Note: the pi-subagents plugin is NOT the problem — nested delegation
 it; conductor fan-out is enforced by the agents' tool sets, not the plugin.
 
 1. **Memory first (dispatcher-owned)**: `GRAPH_PATH="$HOME/.pi/agent/agentic-coding/memory/graph.jsonl" python3 "$HOME/.pi/agent/agentic-coding/memory/graph_memory.py" query "<task keywords>" --agent orch --k 5`
-   and embed the relevant hits into the patek/orch briefs. At close-out, record
+   and embed the relevant hits into the orch brief. At close-out, record
    durable lessons with the same script's `add` subcommand. Memory duty is fully
    yours because the conductors (patek/orch) no longer have shell access — they
    never query or add lessons themselves.

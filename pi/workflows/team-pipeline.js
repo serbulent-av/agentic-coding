@@ -83,6 +83,20 @@ function planGateBlocked(findings, planSummary) {
   };
 }
 
+function noPlanBlocked() {
+  log('lange never produced a plan (initial attempt and one retry both returned null) — plan gate never ran; returning BLOCKED');
+  return {
+    status: 'BLOCKED',
+    files,
+    planSummary: '(no plan produced)',
+    reviews: {},
+    rounds: 0,
+    openFindings: [{ reviewer: '(pipeline)', severity: 'MAJOR', title: 'No plan produced', detail: 'lange returned null for every planning attempt' }],
+    gateOk: false,
+    planGate: 'NO_PLAN',
+  };
+}
+
 function gateFindings(verdict) {
   const open = [];
   if (verdict && Array.isArray(verdict.findings)) {
@@ -115,12 +129,14 @@ const planGateLens =
   (args.bio
     ? ' This is biophysics/MD/FEP work — also scrutinize the scientific claims and protocol: force field/water model choice, ensembles, equilibration, sampling, convergence and error reporting, reproducibility.'
     : '');
+function hasBlockingFindings(verdict) {
+  return Boolean(verdict && Array.isArray(verdict.findings) &&
+    verdict.findings.some(f => f.severity === 'CRITICAL' || f.severity === 'MAJOR'));
+}
+
 let gateVerdict = null;
 if (planSummary === null) {
-  log('No plan ever materialized from lange — plan gate cannot pass');
-  return planGateBlocked(
-    [{ reviewer: '(pipeline)', severity: 'MAJOR', title: 'No plan produced', detail: 'lange returned null for every planning attempt' }],
-    '(no plan produced)');
+  return noPlanBlocked();
 }
 for (let gateRound = 0; gateRound <= 2; gateRound++) {
   log('Plan gate round ' + (gateRound + 1) + ': gerald reviewing the plan');
@@ -130,7 +146,7 @@ for (let gateRound = 0; gateRound <= 2; gateRound++) {
     '\nReturn your verdict via the structured output tool.',
     { label: 'gate-r' + (gateRound + 1), agentType: 'gerald', schema: VERDICT_SCHEMA }
   );
-  if (gateVerdict !== null && gateVerdict.verdict === 'APPROVE') {
+  if (gateVerdict !== null && gateVerdict.verdict === 'APPROVE' && !hasBlockingFindings(gateVerdict)) {
     log('Plan gate APPROVED on round ' + (gateRound + 1));
     break;
   }
@@ -140,7 +156,8 @@ for (let gateRound = 0; gateRound <= 2; gateRound++) {
   const findings = gateFindings(gateVerdict);
   log(gateVerdict === null
     ? 'Plan gate round ' + (gateRound + 1) + ' returned null verdict — sending plan back to lange'
-    : 'Plan gate round ' + (gateRound + 1) + ': REQUEST_CHANGES — lange revises');
+    : 'Plan gate round ' + (gateRound + 1) + ': ' + gateVerdict.verdict +
+      (gateVerdict.verdict === 'APPROVE' ? ' but carries CRITICAL/MAJOR findings' : '') + ' — lange revises');
   const findingsText = findings.map((f, i) => (i + 1) + '. [' + f.severity + '] ' + f.title + ' — ' + f.detail).join('\n');
   const revised = await agent(
     boundary + '\n\nGerald rejected the plan for this task:\n' + task +
@@ -246,7 +263,7 @@ while (!noVerdicts && open.length > 0 && rounds < 2) {
     '\n\nFix each finding:\n' + findingsText +
     (verify ? '\n\nVerification command (MUST still pass): `' + verify + '`' : '') +
     '\n\nReturn a short summary of the fixes.',
-    { label: 'impl', agentType: implType, resume: 'impl' }
+    { label: 'impl', resume: 'impl' }
   );
   if (fixResult === null) log(implType + ' returned null during fix round ' + rounds);
   log('Re-reviewing after fix round ' + rounds);
