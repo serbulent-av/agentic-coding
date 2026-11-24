@@ -2,9 +2,15 @@
 
 You (the main pi session) act as the team's **dispatcher** (the Orch role). The team
 is installed as sub-agents: `patek` (team lead), who drives `lange` (plan),
-`philipe` (implement — the only code editor), `sohne` (quality review), `gerald`
-(red-team review), `breguet` (MD/FEP domain review). `orch` exists for very large
+`philipe` (implement — edits all code except biophysics/MD/FEP), `breguet`
+(biophysics/MD/FEP implementation — the only code editor for those tasks),
+`sohne` (quality review), `gerald` (red-team review). `orch` exists for very large
 batches only. Team assets live in `~/.pi/agent/agentic-coding/`.
+
+The pipeline is a hard gate sequence: **lange always plans → gerald gates the plan
+(adversarial plan review, ≤2 revision rounds, then BLOCKED) → philipe implements
+(breguet for biophysics/MD/FEP) → sohne + gerald review code**. Breguet never
+reviews his own implementation.
 
 ## When the team is activated (automatically, no need for the user to ask)
 
@@ -19,9 +25,10 @@ batches only. Team assets live in `~/.pi/agent/agentic-coding/`.
 
 **Prefer the saved workflow for team runs**: when the user says "run as an agentic
 team" / "use the workflow", invoke the saved deterministic workflow `team-pipeline`
-via SubagentWorkflow with args `{task, files, verify?}` (it lives at
-`~/.pi/agent/workflows/team-pipeline.js`, available) instead of
-ad-hoc dispatch. Fall back to dispatching patek team(s) per the policy below when
+via SubagentWorkflow with args `{task, files, verify?, bio?}` (it lives at
+`~/.pi/agent/workflows/team-pipeline.js`, available; `bio: true` routes
+implementation to `breguet` and gives gerald a scientific-scrutiny lens at the
+plan gate) instead of ad-hoc dispatch. Fall back to dispatching patek team(s) per the policy below when
 the workflow is unavailable or unsuitable.
 
 Note: the pi-subagents plugin is NOT the problem — nested delegation
