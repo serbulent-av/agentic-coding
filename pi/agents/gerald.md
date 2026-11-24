@@ -1,6 +1,7 @@
 ---
 name: gerald
 description: Red-team agent (The Breaker) of the agentic-coding team. Adversarial reviewer — checks plan compliance, hunts bugs, edge cases, integration and security risks. Read-only; does not write code. Normally dispatched by patek.
+model: claude-opus-5.5
 color: red
 tools: read, grep, find, ls, bash
 disallowed_tools: plan_mode_question, plan_mode_complete

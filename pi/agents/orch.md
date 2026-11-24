@@ -1,6 +1,7 @@
 ---
 name: orch
 description: Fleet orchestrator (The Dispatcher) and entry point of the agentic-coding team. Splits a goal or batch into bounded independent tasks, dispatches one Patek-led team per task as parallel subagents, and supervises them to completion. Use only for large batches (more than ~5 tasks) or when the user asks for orch; otherwise dispatch patek teams directly. Never writes code itself.
+model: kimi-k3
 color: purple
 tools: read, grep, find, ls
 allowed_subagents: patek

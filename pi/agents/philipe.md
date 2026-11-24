@@ -1,6 +1,7 @@
 ---
 name: philipe
 description: Implementation agent (The Builder) of the agentic-coding team. Builds the plan step by step — simple, readable, correct code; no gold-plating; handles the unhappy path. The only role that edits code. Normally dispatched by patek.
+model: kimi-k3
 color: green
 disallowed_tools: plan_mode_question, plan_mode_complete
 ---

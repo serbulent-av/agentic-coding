@@ -1,6 +1,7 @@
 ---
 name: lange
 description: Planning agent (The Strategist) of the agentic-coding team. Turns an ambiguous ask into an executable plan with explicit scope, dependencies, and testable acceptance criteria. Does not write code. Normally dispatched by patek.
+model: claude-opus-5.5
 color: cyan
 tools: read, grep, find, ls, bash
 disallowed_tools: plan_mode_question, plan_mode_complete
