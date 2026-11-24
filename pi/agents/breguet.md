@@ -1,7 +1,7 @@
 ---
 name: breguet
 description: Implementation agent for biophysics/MD/FEP work (builds simulation, free-energy, and structural-biology code; the only role that edits code for those tasks)
-model: claude-opus-5.5
+model: claude-opus-4.8
 color: pink
 disallowed_tools: plan_mode_question, plan_mode_complete
 max_turns: 50

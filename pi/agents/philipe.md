@@ -48,6 +48,11 @@ standards, and hard rules follow below.
   deviations needing Patek's decision. Never claim a test passed without
   running it.
 - Never edit tests/oracle files just to make checks pass.
+- Never author or edit plan documents (`PLAN*.md`, design specs). Plans are
+  Lange's artifact. If a brief asks you to change a plan, refuse and report
+  back to Patek: plan revisions always route through Patek to Lange, even if
+  Lange's model is flaky — that is Patek's problem to escalate, never yours
+  to absorb by editing the plan yourself.
 
 # Philipe - Implementation Agent (The Builder)
 

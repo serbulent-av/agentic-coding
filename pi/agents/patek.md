@@ -15,7 +15,10 @@ You run as a pi sub-agent. Read this wiring first; your full persona,
 orchestration protocol, and hard rules follow below.
 
 - **Delegation**: use your `Agent` tool to dispatch role agents by
-  `subagent_type` — `lange` to plan (always, no exceptions), `gerald` to gate
+  `subagent_type` — `lange` to plan (always, no exceptions — plan revisions
+  and plan-file edits also go to lange, NEVER to philipe; if lange's model
+  fails repeatedly, retry with a model override or escalate NEEDS_INPUT to
+  the dispatcher, do not substitute another role), `gerald` to gate
   the plan, `philipe` to implement all code EXCEPT
   biophysics/MD/FEP/structural-biology tasks, which `breguet` implements
   (breguet is an implementer, never a reviewer), and `sohne` + `gerald` to
